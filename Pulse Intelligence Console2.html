@@ -1,0 +1,1058 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Pulse Intelligence Console</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* Layout: sticky console bar, analytics column on the left, agent rail docked right (stacks below on narrow screens) */
+:root{
+  --bg:#eef3f3; --surface:#ffffff; --surface-2:#e6eeee; --line:#d3dfdf; --fg:#0e1c22; --muted:#56696f;
+  --accent:#0a766e; --accent-soft:#d2eeea; --ink2:#5747c2;
+  --crit:#c23b28; --warn:#b07316; --good:#2c8549;
+  --c1:#0a766e; --c2:#5747c2; --c3:#b07316; --c4:#b23a6c; --c5:#3a74c9; --c6:#8a9a9e;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0b1417; --surface:#111d21; --surface-2:#172830; --line:#23363d; --fg:#e2ecee; --muted:#8ea2a8;
+  --accent:#3cc4b3; --accent-soft:#103a36; --ink2:#a294f2;
+  --crit:#f06d58; --warn:#e7ad46; --good:#5ec482;
+  --c1:#3cc4b3; --c2:#a294f2; --c3:#e7ad46; --c4:#ee7aa8; --c5:#6aa6f2; --c6:#6d8187;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0b1417; --surface:#111d21; --surface-2:#172830; --line:#23363d; --fg:#e2ecee; --muted:#8ea2a8;
+  --accent:#3cc4b3; --accent-soft:#103a36; --ink2:#a294f2;
+  --crit:#f06d58; --warn:#e7ad46; --good:#5ec482;
+  --c1:#3cc4b3; --c2:#a294f2; --c3:#e7ad46; --c4:#ee7aa8; --c5:#6aa6f2; --c6:#6d8187;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;font-weight:700;letter-spacing:-.01em}
+.num,td.n,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input[type=text],input[type=search],textarea{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar-in{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand h1{font-size:19px}
+.brand small{display:block;color:var(--muted);font-size:12px;font-family:var(--body);font-weight:500}
+.tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:10px;margin-left:auto}
+.tab{border:0;background:transparent;padding:7px 14px;border-radius:7px;font-weight:600;color:var(--muted);display:flex;gap:8px;align-items:center}
+.tab[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.tab .k{font-family:var(--mono);font-size:11px;color:var(--accent)}
+
+/* page */
+.page{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:18px;padding-block:18px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1640px;margin:0 auto}
+@media (max-width:1180px){.page{grid-template-columns:minmax(0,1fr)}}
+.module{display:flex;flex-direction:column;gap:18px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.panel-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.panel-h h3{font-size:16px}
+.panel-h p{margin:2px 0 0;color:var(--muted);font-size:12.5px}
+.eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.grid2{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:18px}
+.grid2e{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.grid2,.grid2e{grid-template-columns:minmax(0,1fr)}}
+
+/* brief + pipeline */
+.brief{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.brief h2{font-size:clamp(20px,2.4vw,26px);max-width:34ch}
+.brief .prob{color:var(--muted);max-width:75ch;margin:6px 0 0}
+.pipe{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.pipe button{all:unset;cursor:pointer;padding:12px 14px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:3px;position:relative;min-width:0}
+.pipe button:last-child{border-right:0}
+.pipe button:hover{background:var(--surface-2)}
+.pipe button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.pipe .st{font-size:11px;font-family:var(--mono);color:var(--accent);letter-spacing:.04em}
+.pipe b{font-family:var(--display);font-size:15px}
+.pipe span.d{color:var(--muted);font-size:12px}
+.pipe .v{font-family:var(--mono);font-size:12px;color:var(--fg);margin-top:2px}
+@media (max-width:700px){.pipe{grid-template-columns:repeat(2,minmax(0,1fr))}.pipe button:nth-child(2){border-right:0}.pipe button:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+@media (max-width:1000px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:500}
+.kpi .v{font-family:var(--display);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi .s b{font-weight:600}
+.up-bad{color:var(--crit)} .up-good{color:var(--good)} .warn{color:var(--warn)}
+
+.chartbox{position:relative;height:260px}
+.chartbox.sm{height:220px}
+.chartbox.lg{height:300px}
+.insight{margin-top:10px;font-size:13px;padding:9px 12px;border-radius:8px;background:var(--surface-2);border-left:3px solid var(--accent)}
+.insight b{font-weight:600}
+
+/* segments */
+.segs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+@media (max-width:1100px){.segs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:600px){.segs{grid-template-columns:minmax(0,1fr)}}
+.seg{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:6px;background:var(--surface);border-top:4px solid var(--sc);min-width:0}
+.seg:hover{background:var(--surface-2)}
+.seg[aria-pressed="true"]{background:color-mix(in oklab,var(--sc) 10%,var(--surface));border-color:var(--sc)}
+.seg:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.seg h4{margin:0;font-family:var(--display);font-size:14.5px}
+.seg p{margin:0;font-size:12px;color:var(--muted)}
+.seg .row{display:flex;justify-content:space-between;font-size:12px}
+.seg .row b{font-family:var(--mono);font-weight:500}
+.seg .play{font-size:12px;border-top:1px dashed var(--line);padding-top:6px}
+
+/* heatmap */
+.hm{overflow-x:auto}
+.hm table{border-collapse:separate;border-spacing:3px;width:100%;min-width:420px}
+.hm th{font-size:11px;color:var(--muted);font-weight:600;text-align:center;padding:2px 4px;white-space:nowrap}
+.hm th.rl{text-align:left}
+.hm td{text-align:center;font-family:var(--mono);font-size:11.5px;padding:6px 4px;border-radius:4px;font-variant-numeric:tabular-nums}
+.hm td.e{background:transparent}
+
+/* table */
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{font-size:13px;padding:6px 9px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:9px}
+table.t{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+table.t th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:9px 10px;background:var(--surface-2);position:sticky;top:0}
+table.t td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:middle}
+table.t tbody tr{cursor:pointer}
+table.t tbody tr:hover{background:var(--surface-2)}
+table.t tbody tr[aria-selected="true"]{background:color-mix(in oklab,var(--accent) 12%,var(--surface))}
+.who b{display:block;font-weight:600}
+.who span{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.riskbar{display:flex;align-items:center;gap:8px;min-width:110px}
+.riskbar i{display:block;height:6px;border-radius:3px;background:var(--surface-2);flex:1;position:relative;overflow:hidden}
+.riskbar i::after{content:"";position:absolute;inset:0 auto 0 0;width:var(--w);background:var(--rc);border-radius:3px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in oklab,var(--pc) 15%,var(--surface));color:var(--pc)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--pc)}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--fg);white-space:nowrap}
+.more{margin-top:10px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--muted);gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:600;font-size:13px}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn.pri:hover{filter:brightness(1.08)}
+
+/* detail */
+.detail{display:flex;flex-direction:column;gap:12px}
+.detail .hd{display:flex;gap:14px;align-items:center}
+.gauge{flex:none}
+.gauge text{font-family:var(--display);font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.kv div{background:var(--surface-2);border-radius:7px;padding:7px 9px}
+.kv span{display:block;font-size:11px;color:var(--muted)}
+.kv b{font-family:var(--mono);font-weight:500;font-size:13px}
+.drv{display:flex;flex-direction:column;gap:6px}
+.drv .r{display:grid;grid-template-columns:minmax(0,1fr) 110px 44px;gap:8px;align-items:center;font-size:12.5px}
+.drv .bar{height:8px;background:var(--surface-2);border-radius:4px;position:relative;overflow:hidden}
+.drv .bar i{position:absolute;inset:0 auto 0 0;background:var(--crit);border-radius:4px}
+.drv .bar i.neg{background:var(--good)}
+.drv .n{font-family:var(--mono);font-size:11.5px;text-align:right;color:var(--muted)}
+.playcard{border:1px solid var(--line);border-radius:9px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.playcard h4{margin:0;font-size:14px;font-family:var(--display)}
+.playcard ol{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.playcard .meta{display:flex;flex-wrap:wrap;gap:6px}
+.empty{color:var(--muted);font-size:13px;padding:24px 8px;text-align:center}
+
+/* simulator */
+.sim{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:start}
+@media (max-width:860px){.sim{grid-template-columns:minmax(0,1fr)}}
+.slider{display:flex;flex-direction:column;gap:8px}
+.slider input[type=range]{width:100%;accent-color:var(--accent)}
+.slider .big{font-family:var(--display);font-size:30px;font-weight:700}
+.simout{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.simout div{background:var(--surface-2);border-radius:8px;padding:9px 11px}
+.simout span{display:block;font-size:11.5px;color:var(--muted)}
+.simout b{font-family:var(--display);font-size:19px;font-variant-numeric:tabular-nums}
+.alloc{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--surface-2)}
+.alloc i{display:block;height:100%}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;gap:5px;align-items:center}
+.legend span::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--lc)}
+
+/* gantt */
+.gantt{overflow-x:auto}
+.gantt-in{min-width:620px;display:grid;grid-template-columns:200px repeat(6,minmax(0,1fr));row-gap:6px}
+.gantt .gh{font-size:11px;color:var(--muted);font-weight:600;text-align:center;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.gantt .gl{all:unset;cursor:pointer;font-size:12.5px;padding:4px 8px 4px 0;display:flex;flex-direction:column;justify-content:center;min-width:0}
+.gantt .gl b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gantt .gl span{font-size:11px;color:var(--muted)}
+.gantt .gl:focus-visible{outline:2px solid var(--accent)}
+.gantt .gb{all:unset;cursor:pointer;height:28px;align-self:center;border-radius:6px;display:flex;align-items:center;padding:0 9px;font-size:11.5px;font-weight:600;color:var(--fg);background:color-mix(in oklab,var(--pc) 22%,var(--surface));border:1px solid color-mix(in oklab,var(--pc) 55%,var(--surface));white-space:nowrap;overflow:hidden;gap:6px}
+.gantt .gb[aria-pressed="true"]{outline:2px solid var(--pc);outline-offset:1px}
+.gantt .gb:focus-visible{outline:2px solid var(--accent)}
+.gantt .grow{display:contents}
+
+/* agent */
+.agent{position:sticky;top:calc(env(safe-area-inset-top,0px) + 74px);height:calc(100vh - 100px);display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-width:0}
+@media (max-width:1180px){.agent{position:relative;top:0;height:640px}}
+.agent-h{padding:14px 16px 10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.agent-h .t{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.agent-h h3{font-size:17px;display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 3px color-mix(in oklab,var(--good) 25%,transparent)}
+.engine{all:unset;cursor:pointer;font-size:11.5px;font-family:var(--mono);padding:3px 8px;border-radius:6px;border:1px solid var(--line);color:var(--muted)}
+.engine:focus-visible{outline:2px solid var(--accent)}
+.engine b{color:var(--accent);font-weight:500}
+.agent-h .ctx{font-size:12px;color:var(--muted)}
+.msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:100%;font-size:13.5px;min-width:0}
+.msg.u{align-self:flex-end;background:var(--accent);color:var(--surface);padding:8px 12px;border-radius:12px 12px 3px 12px;max-width:88%}
+.msg.a{align-self:stretch}
+.msg.a .body{background:var(--surface-2);padding:10px 12px;border-radius:3px 12px 12px 12px;overflow-wrap:anywhere}
+.msg.a .body p{margin:0 0 7px}
+.msg.a .body p:last-child{margin-bottom:0}
+.msg.a .body ul,.msg.a .body ol{margin:4px 0 8px;padding-left:18px}
+.msg.a .body li{margin:2px 0}
+.msg.a .body h4{margin:8px 0 4px;font-family:var(--display);font-size:14px}
+.msg.a .body code{font-family:var(--mono);font-size:12px;background:var(--surface);padding:1px 4px;border-radius:4px}
+.msg.a .body table{border-collapse:collapse;font-size:12px;margin:6px 0;display:block;overflow-x:auto}
+.msg.a .body td,.msg.a .body th{border:1px solid var(--line);padding:3px 6px;text-align:left}
+.trace{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.trace span{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);background:var(--surface)}
+.trace span::before{content:"▸ ";color:var(--accent)}
+.thinking{color:var(--muted);font-style:italic}
+.sugg{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--line)}
+.sugg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;text-align:left}
+.sugg button:hover{background:var(--surface-2);border-color:var(--accent)}
+.composer{display:flex;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--line)}
+.composer textarea{flex:1;resize:none;height:42px;min-width:0}
+.composer .btn{flex:none}
+.fab{display:none;position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:8;border:0;background:var(--accent);color:var(--surface);padding:11px 16px;border-radius:999px;font-weight:700;box-shadow:0 6px 18px rgb(0 0 0 / .2)}
+@media (max-width:1180px){.fab{display:block}}
+
+.mlist{display:flex;flex-direction:column;gap:8px}
+.planrow{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;align-items:center;font-size:12.5px}
+@media (max-width:560px){.planrow{grid-template-columns:minmax(0,1fr)}}
+.mix{display:flex;height:22px;border-radius:5px;overflow:hidden;background:var(--surface-2)}
+.mix i{display:flex;align-items:center;justify-content:center;font-style:normal;font-size:11px;font-weight:700;color:var(--surface);font-family:var(--mono);min-width:0;overflow:hidden}
+.note{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect width="34" height="34" rx="9" fill="var(--accent)"/><path d="M5 18h6l3-8 5 15 3-9 2 2h5" fill="none" stroke="var(--surface)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div><h1>Pulse Intelligence Console</h1><small>AI agent for churn retention and workforce capacity · assumed data</small></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Module">
+      <button class="tab" role="tab" id="tab-churn" aria-selected="true" aria-controls="mod-churn" data-mod="churn"><span class="k">05</span>Churn &amp; Retention</button>
+      <button class="tab" role="tab" id="tab-workforce" aria-selected="false" aria-controls="mod-workforce" data-mod="workforce"><span class="k">06</span>Workforce &amp; Skills</button>
+    </nav>
+  </div>
+</header>
+
+<div class="page">
+  <main>
+  <!-- ================= CHURN ================= -->
+  <section class="module" id="mod-churn" role="tabpanel" aria-labelledby="tab-churn">
+    <div class="brief">
+      <div>
+        <div class="eyebrow">Problem 05 · Customer churn &amp; retention intelligence</div>
+        <h2>Marketing spend keeps rising, but customers leave faster than they arrive</h2>
+        <p class="prob">The agent scores every active subscriber on 10 behavioural signals, explains each score driver by driver, groups at-risk customers by their main reason for leaving, and prescribes the cheapest action that is likely to keep them.</p>
+      </div>
+      <div class="pipe" id="churnPipe"></div>
+    </div>
+    <div class="kpis" id="churnKpis"></div>
+
+    <div class="grid2">
+      <div class="panel" id="c-detect">
+        <div class="panel-h"><div><h3>Spend vs. churn, last 12 months</h3><p>Acquisition spend (₹ lakh, bars) against monthly churn rate (line)</p></div></div>
+        <div class="chartbox"><canvas id="cTrend" aria-label="Marketing spend and churn rate by month"></canvas></div>
+        <div class="insight" id="cTrendInsight"></div>
+      </div>
+      <div class="panel" id="c-diagnose">
+        <div class="panel-h"><div><h3>What drives predicted churn</h3><p>Share of excess risk among at-risk customers (attribution per driver)</p></div></div>
+        <div class="chartbox"><canvas id="cDrivers" aria-label="Churn driver importance"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel" id="c-segment">
+      <div class="panel-h"><div><h3>At-risk segments</h3><p>Customers with ≥30% predicted 90-day churn, grouped by their strongest driver. Click a segment to filter the list.</p></div><span class="note" id="segNote"></span></div>
+      <div class="segs" id="segCards"></div>
+    </div>
+
+    <div class="grid2e">
+      <div class="panel">
+        <div class="panel-h"><div><h3>Cohort retention</h3><p>% of each monthly sign-up cohort still active after N months</p></div></div>
+        <div class="hm" id="cohortHm"></div>
+        <div class="insight" id="cohortInsight"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><div><h3>Risk by acquisition channel</h3><p>Avg. predicted churn vs. share of marketing spend</p></div></div>
+        <div class="chartbox sm"><canvas id="cChannel" aria-label="Churn risk by acquisition channel"></canvas></div>
+        <div class="insight" id="channelInsight"></div>
+      </div>
+    </div>
+
+    <div class="grid2" id="c-act">
+      <div class="panel">
+        <div class="panel-h"><div><h3>At-risk customers</h3><p>Sorted by predicted 90-day churn. Select a row for the diagnosis and playbook.</p></div></div>
+        <div class="filters" style="margin-bottom:10px">
+          <input type="search" id="cSearch" placeholder="Search name or ID" aria-label="Search customers">
+          <select id="cSeg" aria-label="Segment"></select>
+          <select id="cTier" aria-label="Risk tier"><option value="">All risk tiers</option><option>Critical</option><option>High</option><option>Medium</option><option>Low</option></select>
+          <select id="cPlan" aria-label="Plan"><option value="">All plans</option><option>Basic</option><option>Standard</option><option>Premium</option></select>
+        </div>
+        <div class="tbl"><table class="t"><thead><tr><th>Customer</th><th>Plan</th><th>Risk</th><th>Segment</th><th>Top driver</th><th>ARR at risk</th></tr></thead><tbody id="cRows"></tbody></table></div>
+        <div class="more"><span id="cCount"></span><button class="btn" id="cMore">Show 15 more</button></div>
+      </div>
+      <div class="panel" id="cDetail"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><div><h3>Retention budget optimiser</h3><p>The agent funds the playbooks with the highest expected revenue saved per rupee, until the budget runs out</p></div></div>
+      <div class="sim">
+        <div class="slider">
+          <label for="budget" class="eyebrow">Quarterly retention budget</label>
+          <div class="big num" id="budgetVal"></div>
+          <input type="range" id="budget" min="0.25" max="6" step="0.25" value="1.5">
+          <div class="simout" id="simOut"></div>
+          <div class="eyebrow" style="margin-top:6px">Where the money goes</div>
+          <div class="alloc" id="simAlloc"></div>
+          <div class="legend" id="simLegend"></div>
+        </div>
+        <div>
+          <div class="chartbox sm"><canvas id="cFrontier" aria-label="Revenue protected against budget"></canvas></div>
+          <div class="insight" id="simInsight"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WORKFORCE ================= -->
+  <section class="module" id="mod-workforce" role="tabpanel" aria-labelledby="tab-workforce" hidden>
+    <div class="brief">
+      <div>
+        <div class="eyebrow">Problem 06 · Workforce capacity &amp; skill gap</div>
+        <h2>Enough people on paper, but the wrong skills free at the wrong time</h2>
+        <p class="prob">The agent maps 420 employees' skills and release dates against the next six months of project demand, finds the skills and months that come up short, and recommends the fastest mix of reallocation, upskilling, hiring and contracting to close each gap.</p>
+      </div>
+      <div class="pipe" id="wfPipe"></div>
+    </div>
+    <div class="kpis" id="wfKpis"></div>
+
+    <div class="grid2">
+      <div class="panel" id="w-map">
+        <div class="panel-h"><div><h3>Supply vs. demand by skill</h3><p>Free FTE at expert level (L3+) against pipeline demand, in the peak month</p></div></div>
+        <div class="chartbox lg"><canvas id="wSD" aria-label="Skill supply and demand"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><div><h3>Where the people are</h3><p>Current allocation of all 420 employees</p></div></div>
+        <div class="chartbox sm"><canvas id="wUtil" aria-label="Employee allocation"></canvas></div>
+        <div class="insight" id="wUtilInsight"></div>
+      </div>
+    </div>
+
+    <div class="panel" id="w-gap">
+      <div class="panel-h"><div><h3>Skill gap heatmap</h3><p>Demand minus available supply, in FTE. Red is a shortage, green is spare capacity.</p></div></div>
+      <div class="hm" id="gapHm"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel" id="w-diag">
+        <div class="panel-h"><div><h3>Project pipeline &amp; deadline risk</h3><p>Coverage = share of required skill-FTE the company can staff at project start. Select a project.</p></div></div>
+        <div class="gantt" id="gantt"></div>
+      </div>
+      <div class="panel" id="projDetail"></div>
+    </div>
+
+    <div class="panel" id="w-act">
+      <div class="panel-h"><div><h3>Gap closure plan</h3><p>Per short skill: reallocate people who already have it, upskill adjacent people who can be ready in time, hire where hiring is fast enough, contract the rest</p></div><div class="legend"><span style="--lc:var(--c1)">Reallocate</span><span style="--lc:var(--c5)">Upskill</span><span style="--lc:var(--c2)">Hire</span><span style="--lc:var(--c3)">Contract</span></div></div>
+      <div class="tbl"><table class="t" style="min-width:760px"><thead><tr><th>Skill</th><th>Short by</th><th>Needed from</th><th>Mix</th><th>Ready in</th><th>One-time cost</th><th>Recommendation</th></tr></thead><tbody id="planRows"></tbody></table></div>
+      <div class="insight" id="planInsight"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><div><h3>Skill inventory explorer</h3><p>Find who holds a skill, at what level, and when they are free</p></div></div>
+      <div class="filters" style="margin-bottom:10px">
+        <select id="wSkill" aria-label="Skill"></select>
+        <select id="wLvl" aria-label="Minimum level"><option value="1">Level 1+</option><option value="2">Level 2+</option><option value="3" selected>Level 3+ (expert)</option><option value="4">Level 4 (lead)</option></select>
+        <select id="wAvail" aria-label="Availability"><option value="9">Any availability</option><option value="0">Free now</option><option value="2">Free within 2 months</option></select>
+      </div>
+      <div class="tbl"><table class="t"><thead><tr><th>Employee</th><th>Team</th><th>Level</th><th>Primary skill</th><th>Status</th><th>Free from</th></tr></thead><tbody id="invRows"></tbody></table></div>
+      <div class="more"><span id="invCount"></span></div>
+    </div>
+  </section>
+  </main>
+
+  <!-- ================= AGENT ================= -->
+  <aside class="agent" id="agent" aria-label="Pulse agent">
+    <div class="agent-h">
+      <div class="t"><h3><span class="dot" aria-hidden="true"></span>Pulse Agent</h3><button class="engine" id="engineBtn" title="Switch reasoning engine"></button></div>
+      <div class="ctx" id="agentCtx"></div>
+    </div>
+    <div class="msgs" id="msgs" aria-live="polite"></div>
+    <div class="sugg" id="sugg"></div>
+    <form class="composer" id="composer">
+      <textarea id="q" placeholder="Ask about risk, causes, segments, budgets…" aria-label="Message the agent"></textarea>
+      <button class="btn pri" id="sendBtn" type="submit">Send</button>
+    </form>
+  </aside>
+</div>
+<button class="fab" id="fab">Ask the agent</button>
+
+<script>
+(function(){
+"use strict";
+/* ---------- utilities ---------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const R=rng(20261026);
+const pick=a=>a[Math.floor(R()*a.length)];
+const wpick=(pairs)=>{let s=pairs.reduce((a,p)=>a+p[1],0),x=R()*s;for(const p of pairs){x-=p[1];if(x<=0)return p[0]}return pairs[pairs.length-1][0]};
+const uni=(a,b)=>a+R()*(b-a);
+const ri=(a,b)=>Math.floor(uni(a,b+1));
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const sig=x=>1/(1+Math.exp(-x));
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=(x,d=1)=>(x*100).toFixed(d)+"%";
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+function inrS(n){const a=Math.abs(n);if(a>=1e7)return"₹"+(n/1e7).toFixed(2)+" Cr";if(a>=1e5)return"₹"+(n/1e5).toFixed(1)+" L";return inr(n)}
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+function alpha(hex,a){hex=hex.replace("#","");if(hex.length===3)hex=hex.split("").map(c=>c+c).join("");const n=parseInt(hex,16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+
+const FN=["Aarav","Vihaan","Ananya","Diya","Ishaan","Kabir","Meera","Riya","Arjun","Sana","Farhan","Zoya","Rohan","Priya","Aditya","Neha","Kavya","Imran","Tara","Nikhil","Sneha","Rahul","Pooja","Yash","Aisha","Varun","Ira","Karthik","Lakshmi","Dev","Harsha","Sahithi","Rizwan","Bhavana","Tejas","Fatima","Siddharth","Keerthi","Omar","Nandini"];
+const LN=["Sharma","Reddy","Iyer","Khan","Patel","Rao","Menon","Gupta","Nair","Singh","Das","Joshi","Kulkarni","Verma","Shaikh","Pillai","Naidu","Chowdary","Ali","Bose"];
+
+/* =====================================================================
+   MODULE 05 · CHURN — assumed data + model
+   ===================================================================== */
+const MONTHS=["Nov '25","Dec","Jan '26","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct '26"];
+const SPEND=[8.0,8.3,8.6,8.9,9.2,9.5,9.8,10.1,10.4,10.8,11.1,11.5]; // ₹ lakh
+const CHURN=[3.1,3.2,3.4,3.5,3.7,3.9,4.1,4.4,4.6,4.9,5.1,5.4]; // monthly %
+const NEW=[118,121,124,127,129,131,133,135,137,139,141,143];
+const trend=[];let base=1900;
+for(let i=0;i<12;i++){const ch=Math.round(base*CHURN[i]/100);const net=NEW[i]-ch;trend.push({m:MONTHS[i],spend:SPEND[i],churn:CHURN[i],newS:NEW[i],churned:ch,net,cac:SPEND[i]*1e5/NEW[i],base});base+=net}
+const N_CUST=base;
+
+const PLANS={Basic:499,Standard:999,Premium:1799};
+const CHANNELS=[["Paid Social",.30],["Search",.24],["Referral",.16],["Organic",.18],["Partner",.12]];
+const SPEND_SHARE={"Paid Social":.46,"Search":.31,"Partner":.15,"Organic":.05,"Referral":.03};
+const REGIONS=["Hyderabad","Bengaluru","Mumbai","Delhi NCR","Pune","Chennai"];
+
+const customers=[];
+for(let i=0;i<N_CUST;i++){
+  const persona=wpick([["healthy",.52],["silent",.16],["price",.12],["service",.11],["payment",.09],["early",.10]]);
+  const plan=wpick(persona==="price"?[["Basic",.62],["Standard",.3],["Premium",.08]]:[["Basic",.42],["Standard",.39],["Premium",.19]]);
+  const channel=persona==="early"?wpick([["Paid Social",.62],["Search",.2],["Partner",.1],["Organic",.08]]):wpick(CHANNELS);
+  const contract=(persona==="price"||persona==="early")?(R()<.12?"Annual":"Monthly"):(R()<.42?"Annual":"Monthly");
+  const tenure=persona==="early"?ri(1,4):persona==="healthy"?ri(5,48):ri(3,30);
+  let trendPct=persona==="silent"?uni(-82,-38):persona==="healthy"?uni(-12,18):uni(-30,0);
+  const prevLogins=ri(10,32);const logins=Math.max(0,Math.round(prevLogins*(1+trendPct/100)));
+  const usage=persona==="healthy"?uni(.55,.92):persona==="silent"?uni(.12,.4):persona==="early"?uni(.15,.45):uni(.35,.7);
+  const tickets=persona==="service"?ri(3,7):(R()<.25?ri(1,2):0);
+  const nps=persona==="service"?ri(1,5):persona==="healthy"?ri(7,10):ri(4,8);
+  const payFail=persona==="payment"?ri(1,3):(R()<.06?1:0);
+  const discountEnded=persona==="price"?R()<.85:R()<.08;
+  const lastActive=persona==="silent"?ri(9,28):persona==="healthy"?ri(0,4):ri(1,10);
+  customers.push({id:"C-"+(10001+i),name:pick(FN)+" "+pick(LN),plan,fee:PLANS[plan],channel,contract,tenure,trend:trendPct,prevLogins,logins,usage,tickets,nps,payFail,discountEnded,lastActive,region:pick(REGIONS)});
+}
+
+const DRIVERS=[
+ {k:"engage",l:"Engagement decline",f:c=>Math.max(0,-c.trend)/50,w:1.5},
+ {k:"inactive",l:"Recent inactivity",f:c=>Math.min(c.lastActive,30)/10,w:.7},
+ {k:"adopt",l:"Low feature adoption",f:c=>1-c.usage,w:1.6},
+ {k:"support",l:"Support friction",f:c=>Math.min(c.tickets,7)/3,w:.9},
+ {k:"nps",l:"Low satisfaction (NPS)",f:c=>(10-c.nps)/10,w:1.6},
+ {k:"payment",l:"Payment failures",f:c=>c.payFail,w:1.1},
+ {k:"price",l:"Discount expiry / price shock",f:c=>c.discountEnded?1:0,w:1.2},
+ {k:"contract",l:"Monthly contract",f:c=>c.contract==="Monthly"?1:0,w:.6},
+ {k:"tenure",l:"Short tenure",f:c=>Math.max(0,12-c.tenure)/12,w:1.3},
+ {k:"channel",l:"Paid-social acquisition",f:c=>c.channel==="Paid Social"?1:0,w:.5}
+];
+const DMAP=Object.fromEntries(DRIVERS.map(d=>[d.k,d]));
+const means={};DRIVERS.forEach(d=>{means[d.k]=customers.reduce((a,c)=>a+d.f(c),0)/customers.length});
+customers.forEach(c=>{c.raw=DRIVERS.reduce((a,d)=>a+d.w*d.f(c),0);c.contrib={};DRIVERS.forEach(d=>{c.contrib[d.k]=d.w*(d.f(c)-means[d.k])})});
+// calibrate intercept so the mean 90-day churn probability is ~15.5%
+let lo=-20,hi=5;for(let it=0;it<50;it++){const mid=(lo+hi)/2;const m=customers.reduce((a,c)=>a+sig(mid+c.raw),0)/customers.length;if(m>.155)hi=mid;else lo=mid}
+const B0=(lo+hi)/2;
+
+const SEGS={
+ disengaged:{name:"Silent Disengagers",c:"--c5",d:"Logins and usage sliding for weeks. No complaints; they simply drift away.",ks:["engage","inactive","adopt"]},
+ price:{name:"Price-Sensitive Switchers",c:"--c3",d:"Promo pricing ended or on monthly billing with no lock-in; comparing alternatives.",ks:["price","contract"]},
+ service:{name:"Service-Frustrated",c:"--c4",d:"Repeated tickets and low NPS. The product or support is failing them.",ks:["support","nps"]},
+ payment:{name:"Payment-Friction",c:"--c2",d:"Involuntary churn from failed renewals, expired cards and mandate failures.",ks:["payment"]},
+ early:{name:"Early-Life Drop-offs",c:"--c1",d:"Joined recently, mostly via paid social, and never reached first value.",ks:["tenure","channel"]},
+ stable:{name:"Stable",c:"--c6",d:"Below 30% predicted churn.",ks:[]}
+};
+const SEG_ORDER=["disengaged","price","service","payment","early"];
+const segOf=k=>SEG_ORDER.find(s=>SEGS[s].ks.includes(k));
+
+const PLAYS={
+ engage:{t:"Re-engagement journey",h:"Personalised in-app and push nudges built on past usage, plus a 'what's new' walkthrough",cost:c=>60,lift:.22,o:"Lifecycle marketing"},
+ inactive:{t:"Win-back sequence",h:"3-touch email + WhatsApp sequence over 10 days with personalised picks and a one-tap resume link",cost:c=>50,lift:.18,o:"CRM"},
+ adopt:{t:"Guided activation session",h:"1:1 call to switch on the two highest-value features they have never used",cost:c=>350,lift:.28,o:"Customer success"},
+ support:{t:"Priority service recovery",h:"Route to senior support, close open tickets within 48h, confirm the root cause is fixed",cost:c=>250,lift:.30,o:"Support"},
+ nps:{t:"Recovery call + service credit",h:"CSM call to acknowledge the issues, one month's credit once resolved",cost:c=>c.fee+150,lift:.25,o:"Customer success"},
+ payment:{t:"Smart dunning",h:"Card-updater retries, prompt to switch to UPI AutoPay, 7-day grace before suspension",cost:c=>40,lift:.45,o:"Billing ops"},
+ price:{t:"Loyalty annual offer",h:"Annual plan with 2 months free and the price locked for 12 months",cost:c=>c.fee*2,lift:.35,o:"Pricing / CRM"},
+ contract:{t:"Annual-plan conversion",h:"15% off for moving from monthly to annual billing",cost:c=>c.fee*12*.15,lift:.30,o:"Pricing / CRM"},
+ tenure:{t:"First-90-days success program",h:"Milestone onboarding emails and a day-21 check-in call",cost:c=>150,lift:.20,o:"Customer success"},
+ channel:{t:"Expectation-reset onboarding",h:"Week-1 onboarding for paid-social sign-ups that shows what the plan includes",cost:c=>80,lift:.15,o:"Lifecycle marketing"}
+};
+const tierOf=p=>p>=.65?"Critical":p>=.45?"High":p>=.25?"Medium":"Low";
+const TIERC={Critical:"--crit",High:"--warn",Medium:"--c5",Low:"--good"};
+
+customers.forEach(c=>{
+  c.p=sig(B0+c.raw);c.tier=tierOf(c.p);c.annual=c.fee*12;c.arrRisk=c.p*c.annual;
+  c.drivers=DRIVERS.map(d=>({k:d.k,l:d.l,v:c.contrib[d.k]})).sort((a,b)=>b.v-a.v);
+  c.top=c.drivers[0];
+  c.seg=c.p>=.30?segOf(c.top.k):"stable";
+  c.strat=strategyFor(c);
+});
+function strategyFor(c){
+  let ds=c.drivers.filter(d=>d.v>.05).slice(0,2);
+  if(!ds.length)ds=[c.drivers[0]];
+  let plays=ds.map(d=>({k:d.k,...PLAYS[d.k],cost:PLAYS[d.k].cost(c)}));
+  if((c.tier==="Low"||c.tier==="Medium")){const cheap=plays.filter(p=>p.cost<=120);plays=cheap.length?cheap:[{k:"auto",t:"Automated nudge",h:"One personalised in-app message and email about features they use least",cost:30,lift:.10,o:"Lifecycle marketing"}]}
+  const lift=plays.length>1?1-(1-plays[0].lift)*(1-.6*plays[1].lift):plays[0].lift;
+  const cost=plays.reduce((a,p)=>a+p.cost,0);
+  const saved=c.p*lift*c.annual;
+  const channel=c.plan==="Premium"?"CSM phone call":c.lastActive>10?"WhatsApp + email":"In-app + email";
+  const when=c.tier==="Critical"?"within 48 hours":c.tier==="High"?"this week":"this month";
+  return{plays,lift,cost,saved,ev:saved-cost,roi:saved/cost,channel,when};
+}
+
+/* aggregates */
+
+const atRisk=customers.filter(c=>c.p>=.30);
+const avgP=customers.reduce((a,c)=>a+c.p,0)/customers.length;
+const arrRiskTotal=customers.reduce((a,c)=>a+c.arrRisk,0);
+const arrTotal=customers.reduce((a,c)=>a+c.annual,0);
+const tierCount=t=>customers.filter(c=>c.tier===t).length;
+const driverShare=(()=>{const s={};DRIVERS.forEach(d=>s[d.k]=0);atRisk.forEach(c=>c.drivers.forEach(d=>{if(d.v>0)s[d.k]+=d.v}));const tot=Object.values(s).reduce((a,b)=>a+b,0);return DRIVERS.map(d=>({k:d.k,l:d.l,share:s[d.k]/tot})).sort((a,b)=>b.share-a.share)})();
+function segStats(s){
+  const cs=customers.filter(c=>c.seg===s);
+  const dcount={};cs.forEach(c=>{dcount[c.top.k]=(dcount[c.top.k]||0)+1});
+  const topK=Object.entries(dcount).sort((a,b)=>b[1]-a[1])[0];
+  const plan={};cs.forEach(c=>plan[c.plan]=(plan[c.plan]||0)+1);
+  const ch={};cs.forEach(c=>ch[c.channel]=(ch[c.channel]||0)+1);
+  return{key:s,name:SEGS[s].name,n:cs.length,avgP:cs.reduce((a,c)=>a+c.p,0)/(cs.length||1),arrRisk:cs.reduce((a,c)=>a+c.arrRisk,0),topDriver:topK?DMAP[topK[0]].l:"-",topDriverKey:topK?topK[0]:null,
+    avgTenure:cs.reduce((a,c)=>a+c.tenure,0)/(cs.length||1),avgTickets:cs.reduce((a,c)=>a+c.tickets,0)/(cs.length||1),avgUsage:cs.reduce((a,c)=>a+c.usage,0)/(cs.length||1),avgTrend:cs.reduce((a,c)=>a+c.trend,0)/(cs.length||1),
+    plans:plan,channels:ch,critical:cs.filter(c=>c.tier==="Critical").length,play:topK?PLAYS[topK[0]].t:"-",saveable:cs.reduce((a,c)=>a+c.strat.saved,0),cost:cs.reduce((a,c)=>a+c.strat.cost,0)};
+}
+const channelStats=CHANNELS.map(([ch])=>{const cs=customers.filter(c=>c.channel===ch);const early=cs.filter(c=>c.tenure<=4);return{ch,n:cs.length,avgP:cs.reduce((a,c)=>a+c.p,0)/cs.length,earlyP:early.reduce((a,c)=>a+c.p,0)/(early.length||1),spendShare:SPEND_SHARE[ch]}});
+
+// cohort retention (assumed)
+const COH=["Mar '26","Apr","May","Jun","Jul","Aug","Sep"];
+const cohort=COH.map((m,i)=>{const d1=.06+i*.013,rate=.045+i*.006,avail=Math.min(6,7-i);const row=[];for(let k=1;k<=6;k++)row.push(k<=avail?100*(1-d1)*Math.exp(-(k-1)*rate):null);return{m,row}});
+
+const SAT_FN=()=>customers.filter(c=>c.strat.ev>0).reduce((a,c)=>a+c.strat.cost,0);
+const SAT=SAT_FN();
+function simulate(budget){
+  const cand=customers.filter(c=>c.strat.ev>0).sort((a,b)=>b.strat.roi-a.strat.roi);
+  let spent=0,saves=0,rev=0;const bySeg={};const chosen=[];
+  for(const c of cand){if(spent+c.strat.cost>budget)continue;spent+=c.strat.cost;saves+=c.p*c.strat.lift;rev+=c.strat.saved;bySeg[c.seg]=(bySeg[c.seg]||0)+c.strat.cost;chosen.push(c)}
+  return{budget,spent,saves,rev,roi:spent?rev/spent:0,n:chosen.length,bySeg,chosen};
+}
+
+/* =====================================================================
+   MODULE 06 · WORKFORCE — assumed data + model
+   ===================================================================== */
+const WM=["Nov '26","Dec","Jan '27","Feb","Mar","Apr '27"];
+const SK=[
+ {k:"java",l:"Java / Spring",hw:6,ctc:14,up:10,dept:"Engineering",w:70,al:["java","spring"]},
+ {k:"python",l:"Python",hw:6,ctc:13,up:8,dept:"Engineering",w:38,al:["python"]},
+ {k:"react",l:"React / Frontend",hw:6,ctc:12,up:8,dept:"Engineering",w:44,al:["react","frontend","front-end"]},
+ {k:"aws",l:"AWS Cloud",hw:8,ctc:16,up:10,dept:"Cloud & DevOps",w:26,al:["aws","cloud"]},
+ {k:"k8s",l:"Kubernetes / DevOps",hw:10,ctc:20,up:12,dept:"Cloud & DevOps",w:9,al:["kubernetes","k8s","devops"]},
+ {k:"cyber",l:"Cybersecurity",hw:11,ctc:22,up:14,dept:"Cloud & DevOps",w:7,al:["cyber","cybersecurity","security","soc"]},
+ {k:"dataeng",l:"Data Engineering",hw:9,ctc:18,up:12,dept:"Data & AI",w:14,al:["data engineering","data engineer","data eng","pipelines","lakehouse"]},
+ {k:"genai",l:"ML / Gen AI",hw:12,ctc:26,up:16,dept:"Data & AI",w:8,al:["gen ai","genai","generative","machine learning","ml","ai","llm"]},
+ {k:"sqlbi",l:"SQL & Power BI",hw:5,ctc:10,up:6,dept:"Data & AI",w:40,al:["sql","power bi","bi","analytics"]},
+ {k:"autotest",l:"Test Automation",hw:7,ctc:12,up:8,dept:"Quality",w:18,al:["test automation","automation","selenium"]},
+ {k:"manualqa",l:"Manual QA",hw:4,ctc:7,up:4,dept:"Quality",w:62,al:["manual qa","manual testing","qa","testing"]},
+ {k:"uiux",l:"UI/UX Design",hw:7,ctc:13,up:12,dept:"Product & Design",w:18,al:["ui","ux","design","designer"]},
+ {k:"pm",l:"Product Management",hw:9,ctc:24,up:14,dept:"Product & Design",w:16,al:["product management","product manager","pm"]},
+ {k:"sap",l:"SAP S/4HANA",hw:10,ctc:22,up:16,dept:"Enterprise Apps",w:20,al:["sap","s/4","s4hana","hana"]}
+];
+const SKM=Object.fromEntries(SK.map(s=>[s.k,s]));
+const ADJ={java:{autotest:.5,dataeng:.45,k8s:.35,python:.5,react:.3},python:{genai:.65,dataeng:.65,autotest:.45,sqlbi:.4},react:{uiux:.4,java:.3},aws:{k8s:.7,cyber:.5,dataeng:.4},k8s:{aws:.6,cyber:.4},
+ cyber:{aws:.5,k8s:.4},dataeng:{genai:.5,sqlbi:.6,python:.5},genai:{python:.6,dataeng:.5},sqlbi:{dataeng:.55,genai:.35,python:.35},autotest:{python:.4,java:.35,manualqa:.6},manualqa:{autotest:.6,sqlbi:.25},uiux:{react:.35,pm:.4},pm:{uiux:.35},sap:{sqlbi:.3,pm:.25}};
+const adj=(a,b)=>(ADJ[a]&&ADJ[a][b])||0;
+
+const N_EMP=420;const employees=[];
+for(let i=0;i<N_EMP;i++){
+  const p=wpick(SK.map(s=>[s.k,s.w]));
+  const lvl=R()<.4?4:3;
+  const sec={};const adjs=Object.entries(ADJ[p]||{});const ns=ri(1,3);
+  for(let j=0;j<ns&&adjs.length;j++){const [k]=adjs[ri(0,adjs.length-1)];if(k!==p)sec[k]=R()<.22?3:(R()<.55?2:1)}
+  const st=wpick([["Allocated",.66],["Partial",.12],["Bench",.22]]);
+  const free=st==="Allocated"?ri(2,9):0;
+  employees.push({id:"E-"+(2001+i),name:pick(FN)+" "+pick(LN),primary:p,lvl,sec,status:st,free,fte:st==="Partial"?.5:1,dept:SKM[p].dept,loc:pick(["Hyderabad","Hyderabad","Bengaluru","Pune"]),cost:SKM[p].ctc/12*(lvl===4?1.25:.9)});
+}
+const levelOf=(e,k)=>e.primary===k?e.lvl:(e.sec[k]||0);
+
+const PROJECTS=[
+ {id:"P1",n:"Atlas",d:"Core banking cloud migration",client:"Private-sector bank",s:0,dur:6,val:14,need:{aws:6,k8s:6,java:8,cyber:3,autotest:3}},
+ {id:"P2",n:"Helix",d:"Gen AI claims assistant",client:"General insurer",s:1,dur:5,val:9.5,need:{genai:6,python:5,dataeng:4,react:3,uiux:2}},
+ {id:"P3",n:"Orbit",d:"Retail data lakehouse",client:"Retail chain",s:0,dur:5,val:7.2,need:{dataeng:7,sqlbi:5,python:3,aws:2}},
+ {id:"P4",n:"Nova",d:"Mobile commerce app rebuild",client:"D2C brand",s:2,dur:4,val:5.8,need:{react:7,java:4,uiux:3,autotest:3,pm:1}},
+ {id:"P5",n:"Sentinel",d:"SOC modernisation",client:"Telecom operator",s:1,dur:5,val:6.4,need:{cyber:5,k8s:2,aws:2,python:2}},
+ {id:"P6",n:"Ledger",d:"S/4HANA finance rollout",client:"Manufacturing group",s:3,dur:3,val:8.1,need:{sap:8,sqlbi:2,manualqa:3,pm:1}},
+ {id:"P7",n:"Lens",d:"Self-serve analytics & BI",client:"Pharma distributor",s:2,dur:4,val:3.6,need:{sqlbi:6,dataeng:3,uiux:1}},
+ {id:"P8",n:"Forge",d:"Platform engineering & CI/CD",client:"Fintech scale-up",s:3,dur:3,val:4.9,need:{k8s:5,aws:3,autotest:4,java:3}}
+];
+const active=(p,m)=>m>=p.s&&m<p.s+p.dur;
+const demand=(k,m)=>PROJECTS.reduce((a,p)=>a+(active(p,m)?(p.need[k]||0):0),0);
+const supply=(k,m)=>employees.reduce((a,e)=>a+(e.primary===k&&e.free<=m?e.fte:0),0);
+const GAP=SK.map(s=>({k:s.k,l:s.l,m:WM.map((_,m)=>({d:demand(s.k,m),s:supply(s.k,m),g:demand(s.k,m)-supply(s.k,m)}))}));
+const totD=m=>SK.reduce((a,s)=>a+demand(s.k,m),0);
+const totS=m=>SK.reduce((a,s)=>a+supply(s.k,m),0);
+let peakM=0;WM.forEach((_,m)=>{if(totD(m)>totD(peakM))peakM=m});
+const paperCov=totS(peakM)/totD(peakM);
+const matchCov=SK.reduce((a,s)=>a+Math.min(supply(s.k,peakM),demand(s.k,peakM)),0)/totD(peakM);
+const bench=employees.filter(e=>e.status==="Bench");
+const benchCost=bench.reduce((a,e)=>a+e.cost,0);
+
+PROJECTS.forEach(p=>{
+  const m=p.s;let need=0,cov=0;p.skills=[];
+  for(const [k,n] of Object.entries(p.need)){const d=demand(k,m),s=supply(k,m);const c=d?Math.min(1,s/d):1;need+=n;cov+=n*c;p.skills.push({k,need:n,cov:c,staffable:n*c})}
+  p.coverage=cov/need;p.risk=p.coverage<.7?"Critical":p.coverage<.9?"At risk":"On track";
+  p.shortSkills=p.skills.filter(x=>x.cov<.999).sort((a,b)=>a.cov-b.cov);
+});
+const RISKC={"Critical":"--crit","At risk":"--warn","On track":"--good"};
+
+// gap closure plan
+const used=new Set();
+const shortSkills=GAP.map(g=>{const mx=Math.max(...g.m.map(x=>x.g));const first=g.m.findIndex(x=>x.g>0.25);const months=g.m.filter(x=>x.g>0.25).length;return{k:g.k,l:g.l,short:Math.ceil(mx-0.01),first,months}}).filter(x=>x.short>0).sort((a,b)=>b.short-a.short);
+const surplusKeys=new Set(GAP.filter(g=>Math.max(...g.m.map(x=>x.g))<=0).map(g=>g.k));
+function planFor(sg){
+  const s=SKM[sg.k];const needW=sg.first*4.33;const win=needW+4;
+  const realloc=[],upskill=[];
+  // 1. reallocate: free people who already hold the skill at L3 as a secondary
+  employees.filter(e=>!used.has(e.id)&&e.primary!==sg.k&&(e.sec[sg.k]||0)>=3&&e.free<=Math.max(sg.first,0)+1&&surplusKeys.has(e.primary)).slice(0,sg.short).forEach(e=>{realloc.push({e,weeks:1});used.add(e.id)});
+  // 2. upskill adjacent people
+  let rem=sg.short-realloc.length;
+  const cap=Math.ceil(sg.short*.6);
+  const cands=employees.filter(e=>!used.has(e.id)&&e.primary!==sg.k&&surplusKeys.has(e.primary)&&e.free<=sg.first+1).map(e=>{const l=e.sec[sg.k]||0;const a=adj(e.primary,sg.k);let w=l>=2?4:l===1?Math.round(s.up*.6):a>=.4?Math.round(s.up*(1-a)+2):99;return{e,weeks:w,score:(l*.3+a)+(e.status==="Bench"?.2:0)}}).filter(x=>x.weeks<=Math.max(win,6)).sort((a,b)=>a.weeks-b.weeks||b.score-a.score);
+  for(const c of cands){if(rem<=0||upskill.length>=cap)break;upskill.push(c);used.add(c.e.id);rem--}
+  // 3. hire if fast enough, else contract
+  let hire=0,contract=0;
+  if(rem>0){if(s.hw<=win)hire=rem;else contract=rem}
+  const convert=contract>0&&sg.months>=3;
+  const ready=Math.max(realloc.length?1:0,...upskill.map(u=>u.weeks),hire?s.hw:0,contract?3:0);
+  const cost=upskill.reduce((a,u)=>a+u.weeks*.3,0)+hire*s.ctc*.12+contract*(s.ctc/12)*.6*sg.months+realloc.length*.1;
+  const late=ready>win;
+  let rec=[];
+  if(realloc.length)rec.push(`move ${realloc.length} with L3 secondary skill`);
+  if(upskill.length)rec.push(`upskill ${upskill.length} from ${[...new Set(upskill.map(u=>SKM[u.e.primary].l))].slice(0,2).join(" / ")}`);
+  if(hire)rec.push(`hire ${hire}`);
+  if(contract)rec.push(`contract ${contract}${convert?", convert to hires by month 3":""}`);
+  return{...sg,realloc,upskill,hire,contract,convert,ready,cost,late,rec:rec.join("; "),needW};
+}
+const PLANS_W=shortSkills.map(planFor);
+const planTotals=PLANS_W.reduce((a,p)=>({short:a.short+p.short,re:a.re+p.realloc.length,up:a.up+p.upskill.length,hi:a.hi+p.hire,co:a.co+p.contract,cost:a.cost+p.cost}),{short:0,re:0,up:0,hi:0,co:0,cost:0});
+
+function staffingFor(p){
+  return p.skills.map(x=>{
+    const free=employees.filter(e=>e.primary===x.k&&e.free<=p.s).sort((a,b)=>b.lvl-a.lvl||a.free-b.free).slice(0,3);
+    const pl=PLANS_W.find(q=>q.k===x.k);
+    return{...x,free,plan:pl};
+  });
+}
+
+/* =====================================================================
+   RENDERING — shared
+   ===================================================================== */
+const charts={};
+function baseOpts(){
+  const fg=cssv("--muted"),line=cssv("--line");
+  Chart.defaults.font.family='Figtree, "Segoe UI", system-ui, sans-serif';Chart.defaults.font.size=11.5;Chart.defaults.color=fg;
+  return{responsive:true,maintainAspectRatio:false,animation:{duration:500},plugins:{legend:{labels:{boxWidth:10,boxHeight:10,useBorderRadius:true,borderRadius:2}},tooltip:{backgroundColor:cssv("--fg"),titleColor:cssv("--surface"),bodyColor:cssv("--surface"),padding:9,cornerRadius:6}},scales:{x:{grid:{color:alpha(line,.0)},ticks:{color:fg},border:{color:line}},y:{grid:{color:line},ticks:{color:fg},border:{display:false}}}};
+}
+function mk(id,cfg){if(charts[id])charts[id].destroy();const el=document.getElementById(id);if(!el)return;charts[id]=new Chart(el,cfg)}
+const hasChart=typeof window.Chart!=="undefined";
+
+function tierPill(t){return`<span class="pill" style="--pc:var(${TIERC[t]})">${t}</span>`}
+function segPill(s){return`<span class="pill" style="--pc:var(${SEGS[s].c})">${esc(SEGS[s].name)}</span>`}
+function scrollToId(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"})}
+
+/* ---------------- churn render ---------------- */
+function renderChurnStatic(){
+  const last=trend[11],first=trend[0];
+  $("#churnPipe").innerHTML=[
+    ["01","Detect","Score every subscriber",`${N_CUST.toLocaleString("en-IN")} scored · ${pct(avgP)} avg risk`,"c-detect"],
+    ["02","Segment","Group at-risk by main reason",`${atRisk.length} at risk · 5 segments`,"c-segment"],
+    ["03","Diagnose","Explain each score",`Top driver: ${driverShare[0].l}`,"c-diagnose"],
+    ["04","Act","Personalised playbooks",`${inrS(customers.reduce((a,c)=>a+(c.p>=.3?c.strat.saved:0),0))} ARR saveable`,"c-act"]
+  ].map(([n,t,d,v,id])=>`<button data-go="${id}"><span class="st">${n}</span><b>${t}</b><span class="d">${d}</span><span class="v">${v}</span></button>`).join("");
+  $("#churnKpis").innerHTML=[
+    ["Active subscribers",N_CUST.toLocaleString("en-IN"),`Net adds down <b class="up-bad">${Math.round((1-last.net/first.net)*100)}%</b> in 12 months`],
+    ["Predicted 90-day churn",pct(avgP),`Monthly churn <b class="up-bad">${first.churn}% → ${last.churn}%</b>`],
+    ["ARR at risk",inrS(arrRiskTotal),`${pct(arrRiskTotal/arrTotal)} of ${inrS(arrTotal)} ARR`],
+    ["Critical + High risk",(tierCount("Critical")+tierCount("High")).toLocaleString("en-IN"),`<b class="up-bad">${tierCount("Critical")}</b> critical need action in 48h`],
+    ["Cost per acquisition",inr(last.cac),`<b class="up-bad">+${Math.round((last.cac/first.cac-1)*100)}%</b> with spend +${Math.round((last.spend/first.spend-1)*100)}%`]
+  ].map(([l,v,s])=>`<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
+  $("#cTrendInsight").innerHTML=`<b>Leaking bucket.</b> Spend grew ${Math.round((last.spend/first.spend-1)*100)}% but monthly churned customers rose from ${first.churned} to ${last.churned}, so net adds fell from ${first.net} to ${last.net}. Each extra rupee of acquisition is buying customers who leave sooner.`;
+  // segments
+  $("#segCards").innerHTML=SEG_ORDER.map(s=>{const st=segStats(s);return`<button class="seg" data-seg="${s}" aria-pressed="false" style="--sc:var(${SEGS[s].c})"><h4>${esc(st.name)}</h4><p>${esc(SEGS[s].d)}</p><div class="row"><span>Customers</span><b>${st.n}</b></div><div class="row"><span>Avg risk</span><b>${pct(st.avgP,0)}</b></div><div class="row"><span>ARR at risk</span><b>${inrS(st.arrRisk)}</b></div><div class="play"><span class="eyebrow">Lead play</span><br>${esc(st.play)}</div></button>`}).join("");
+  $("#segNote").textContent=`${customers.filter(c=>c.seg==="stable").length.toLocaleString("en-IN")} customers below 30% are not shown`;
+  // cohort heatmap
+  let h=`<table><thead><tr><th class="rl">Cohort</th>${[1,2,3,4,5,6].map(k=>`<th>M${k}</th>`).join("")}</tr></thead><tbody>`;
+  cohort.forEach(r=>{h+=`<tr><th class="rl">${r.m}</th>`+r.row.map(v=>v==null?`<td class="e"></td>`:`<td style="background:color-mix(in oklab,var(--accent) ${Math.round(clamp((v-55)/45,0,1)*70+8)}%,var(--surface));color:${v>82?"var(--surface)":"var(--fg)"}">${v.toFixed(0)}%</td>`).join("")+"</tr>"});
+  $("#cohortHm").innerHTML=h+"</tbody></table>";
+  $("#cohortInsight").innerHTML=`<b>Newer cohorts decay faster.</b> Month-1 retention fell from ${cohort[0].row[0].toFixed(0)}% (Mar) to ${cohort[6].row[0].toFixed(0)}% (Sep), in step with the shift of budget to paid social.`;
+  const ps=channelStats.find(c=>c.ch==="Paid Social"),rf=channelStats.find(c=>c.ch==="Referral");
+  $("#channelInsight").innerHTML=`<b>Paid social</b> takes ${pct(ps.spendShare,0)} of spend and brings customers with ${pct(ps.avgP,0)} predicted churn, against ${pct(rf.avgP,0)} for referrals at ${pct(rf.spendShare,0)} of spend.`;
+  // filters
+  $("#cSeg").innerHTML=`<option value="">All segments</option>`+SEG_ORDER.map(s=>`<option value="${s}">${esc(SEGS[s].name)}</option>`).join("")+`<option value="stable">Stable</option>`;
+}
+function renderChurnCharts(){
+  if(!hasChart)return;
+  const o=baseOpts();const acc=cssv("--accent"),crit=cssv("--crit"),ink2=cssv("--ink2");
+  mk("cTrend",{data:{labels:MONTHS,datasets:[
+    {type:"bar",label:"Marketing spend (₹ L)",data:SPEND,backgroundColor:alpha(ink2,.35),hoverBackgroundColor:alpha(ink2,.6),borderRadius:4,yAxisID:"y",order:2},
+    {type:"line",label:"Monthly churn %",data:CHURN,borderColor:crit,backgroundColor:alpha(crit,.12),fill:true,tension:.35,pointRadius:ctx=>ctx.dataIndex===11?5:0,pointBackgroundColor:crit,yAxisID:"y1",order:1,borderWidth:2.5}]},
+    options:{...o,interaction:{mode:"index",intersect:false},scales:{x:o.scales.x,y:{...o.scales.y,title:{display:true,text:"₹ lakh"},beginAtZero:true},y1:{position:"right",grid:{display:false},ticks:{color:o.scales.y.ticks.color,callback:v=>v+"%"},border:{display:false},min:0,max:6}}}});
+  const ds=driverShare.slice(0,8);
+  mk("cDrivers",{type:"bar",data:{labels:ds.map(d=>d.l),datasets:[{label:"Share of risk",data:ds.map(d=>+(d.share*100).toFixed(1)),backgroundColor:ds.map((d,i)=>i<3?acc:alpha(acc,.4)),borderRadius:4}]},
+    options:{...o,indexAxis:"y",plugins:{...o.plugins,legend:{display:false},tooltip:{...o.plugins.tooltip,callbacks:{label:c=>c.raw+"% of excess risk"}}},scales:{x:{...o.scales.y,ticks:{...o.scales.y.ticks,callback:v=>v+"%"}},y:{grid:{display:false},ticks:{color:cssv("--fg")},border:{display:false}}}}});
+  mk("cChannel",{data:{labels:channelStats.map(c=>c.ch),datasets:[
+    {type:"bar",label:"Avg predicted churn",data:channelStats.map(c=>+(c.avgP*100).toFixed(1)),backgroundColor:channelStats.map(c=>c.ch==="Paid Social"?crit:alpha(crit,.35)),borderRadius:4,yAxisID:"y"},
+    {type:"line",label:"Share of spend",data:channelStats.map(c=>c.spendShare*100),borderColor:ink2,backgroundColor:ink2,pointRadius:4,borderWidth:2,yAxisID:"y"}]},
+    options:{...o,scales:{x:o.scales.x,y:{...o.scales.y,ticks:{...o.scales.y.ticks,callback:v=>v+"%"},beginAtZero:true}}}});
+  const bs=[];for(let b=.25;b<=6.01;b+=.25)bs.push(+b.toFixed(2));
+  const fr=bs.map(b=>simulate(b*1e5).rev/1e5);
+  mk("cFrontier",{type:"line",data:{labels:bs.map(b=>"₹"+b+"L"),datasets:[{label:"ARR protected (₹ L)",data:fr.map(v=>+v.toFixed(1)),borderColor:acc,backgroundColor:alpha(acc,.14),fill:true,tension:.3,borderWidth:2.5,pointRadius:ctx=>bs[ctx.dataIndex]===+$("#budget").value?6:0,pointBackgroundColor:acc}]},
+    options:{...o,plugins:{...o.plugins,legend:{display:false}},scales:{x:{...o.scales.x,title:{display:true,text:"Quarterly budget"},ticks:{...o.scales.x.ticks,maxTicksLimit:8}},y:{...o.scales.y,title:{display:true,text:"ARR protected, ₹ L"},beginAtZero:true}}}});
+}
+
+/* table + detail */
+const cState={seg:"",tier:"",plan:"",q:"",shown:15,sel:null};
+function filteredCustomers(){
+  const q=cState.q.toLowerCase();
+  return customers.filter(c=>(!cState.seg||c.seg===cState.seg)&&(!cState.tier||c.tier===cState.tier)&&(!cState.plan||c.plan===cState.plan)&&(!q||c.name.toLowerCase().includes(q)||c.id.toLowerCase().includes(q))).sort((a,b)=>b.p-a.p);
+}
+function renderTable(){
+  const rows=filteredCustomers();
+  $("#cRows").innerHTML=rows.slice(0,cState.shown).map(c=>`<tr data-id="${c.id}" tabindex="0" aria-selected="${cState.sel===c.id}"><td class="who"><b>${esc(c.name)}</b><span>${c.id}</span></td><td>${c.plan}</td><td><div class="riskbar" style="--w:${(c.p*100).toFixed(0)}%;--rc:var(${TIERC[c.tier]})"><span class="num">${pct(c.p,0)}</span><i></i></div></td><td>${c.seg==="stable"?'<span class="chip">Stable</span>':segPill(c.seg)}</td><td>${esc(c.top.l)}</td><td class="n">${inr(c.arrRisk)}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">No customers match these filters.</td></tr>`;
+  $("#cCount").textContent=`Showing ${Math.min(cState.shown,rows.length)} of ${rows.length.toLocaleString("en-IN")} customers`;
+  $("#cMore").hidden=cState.shown>=rows.length;
+  document.querySelectorAll(".seg").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.seg===cState.seg)));
+}
+function gauge(p,t){
+  const r=46,len=Math.PI*r;const col=`var(${TIERC[t]})`;
+  return`<svg class="gauge" width="120" height="74" viewBox="0 0 120 74" role="img" aria-label="Churn risk ${pct(p,0)}"><path d="M14 64 A46 46 0 0 1 106 64" fill="none" stroke="var(--surface-2)" stroke-width="11" stroke-linecap="round"/><path d="M14 64 A46 46 0 0 1 106 64" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${(len*p).toFixed(1)} ${len.toFixed(1)}"/><text x="60" y="60" text-anchor="middle" font-size="22" fill="var(--fg)">${(p*100).toFixed(0)}%</text></svg>`;
+}
+function renderDetail(){
+  const c=customers.find(x=>x.id===cState.sel);
+  if(!c){$("#cDetail").innerHTML=`<div class="panel-h"><div><h3>Customer diagnosis</h3><p>Select a customer to see why they are at risk and what to do</p></div></div><div class="empty">No customer selected.</div>`;return}
+  const mx=Math.max(...c.drivers.map(d=>Math.abs(d.v)));
+  const s=c.strat;
+  $("#cDetail").innerHTML=`<div class="detail">
+   <div class="hd">${gauge(c.p,c.tier)}<div style="min-width:0"><div class="eyebrow">${c.id} · ${c.region}</div><h3 style="font-size:19px">${esc(c.name)}</h3><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${tierPill(c.tier)}${c.seg!=="stable"?segPill(c.seg):""}</div></div></div>
+   <div class="kv">
+    <div><span>Plan</span><b>${c.plan} · ${inr(c.fee)}/mo</b></div><div><span>Tenure</span><b>${c.tenure} mo · ${c.contract}</b></div><div><span>Channel</span><b>${c.channel}</b></div>
+    <div><span>Logins (30d)</span><b>${c.logins} <span class="${c.trend<0?"up-bad":"up-good"}">${c.trend>0?"+":""}${c.trend.toFixed(0)}%</span></b></div><div><span>Feature adoption</span><b>${pct(c.usage,0)}</b></div><div><span>Tickets (90d) · NPS</span><b>${c.tickets} · ${c.nps}</b></div>
+   </div>
+   <div><div class="eyebrow" style="margin-bottom:6px">Why this score (driver attribution, log-odds)</div><div class="drv">${c.drivers.slice(0,6).map(d=>`<div class="r"><span>${esc(d.l)}</span><span class="bar"><i class="${d.v<0?"neg":""}" style="width:${(Math.abs(d.v)/mx*100).toFixed(0)}%"></i></span><span class="n">${d.v>0?"+":""}${d.v.toFixed(2)}</span></div>`).join("")}</div></div>
+   <div class="playcard"><div class="eyebrow">Recommended playbook · act ${s.when}</div>
+    <ol>${s.plays.map(p=>`<li><b>${esc(p.t)}</b>: ${esc(p.h)}. <span class="note">${esc(p.o)} · ${inr(p.cost)}</span></li>`).join("")}</ol>
+    <div class="meta"><span class="chip">Channel: ${s.channel}</span><span class="chip">Risk cut ≈ ${pct(s.lift,0)}</span><span class="chip">Cost ${inr(s.cost)}</span><span class="chip">Expected ARR saved ${inr(s.saved)}</span><span class="chip">ROI ${s.roi.toFixed(1)}×</span></div>
+   </div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" data-ask="Draft a personalised retention message for ${c.id}">Draft outreach with agent</button><button class="btn" data-ask="Explain why ${c.id} is likely to churn and what we should do">Ask agent to explain</button></div>
+  </div>`;
+}
+function renderSim(){
+  const b=+$("#budget").value*1e5;const r=simulate(b);
+  $("#budgetVal").textContent=inrS(b);
+  $("#simOut").innerHTML=`<div><span>Customers targeted · spent ${inrS(r.spent)}</span><b>${r.n.toLocaleString("en-IN")}</b></div><div><span>Expected customers kept</span><b>${r.saves.toFixed(0)}</b></div><div><span>ARR protected</span><b>${inrS(r.rev)}</b></div><div><span>Return per ₹1</span><b>${r.roi.toFixed(1)}×</b></div>`;
+  const segs=Object.entries(r.bySeg).sort((a,b)=>b[1]-a[1]);
+  $("#simAlloc").innerHTML=segs.map(([s,v])=>`<i style="width:${(v/r.spent*100).toFixed(1)}%;background:var(${SEGS[s].c})" title="${esc(SEGS[s].name)}: ${inrS(v)}"></i>`).join("");
+  $("#simLegend").innerHTML=segs.map(([s,v])=>`<span style="--lc:var(${SEGS[s].c})">${esc(SEGS[s].short||SEGS[s].name)} ${pct(v/r.spent,0)}</span>`).join("");
+  const last=trend[11];const shifted=b;const lostNew=shifted/last.cac;
+  $("#simInsight").innerHTML=`<b>Retention beats acquisition here.</b> ${inrS(b)} spent on paid acquisition buys about ${lostNew.toFixed(0)} new customers at today's CAC of ${inr(last.cac)}. The same amount on retention keeps about ${r.saves.toFixed(0)} existing customers worth ${inrS(r.rev)} ARR. ${b>SAT?`Beyond about ${inrS(SAT)} a quarter no remaining playbook returns more than it costs, so extra budget is better kept or spent on fixing root causes (support quality, payment rails).`:`Returns flatten as the cheap, high-risk saves run out; every playbook worth funding is covered at about ${inrS(SAT)}.`}`;
+  if(charts.cFrontier){charts.cFrontier.update("none")}
+}
+
+/* ---------------- workforce render ---------------- */
+function renderWfStatic(){
+  const crit=PROJECTS.filter(p=>p.risk!=="On track");
+  $("#wfPipe").innerHTML=[
+    ["01","Map","Skills × availability",`${N_EMP} people · ${SK.length} skills`,"w-map"],
+    ["02","Detect","Gaps by skill and month",`${shortSkills.length} skills short at peak`,"w-gap"],
+    ["03","Diagnose","Projects at risk",`${crit.length} of ${PROJECTS.length} projects`,"w-diag"],
+    ["04","Recommend","Reallocate · upskill · hire",`${planTotals.short} FTE plan, ${inrS(planTotals.cost*1e5)}`,"w-act"]
+  ].map(([n,t,d,v,id])=>`<button data-go="${id}"><span class="st">${n}</span><b>${t}</b><span class="d">${d}</span><span class="v">${v}</span></button>`).join("");
+  $("#wfKpis").innerHTML=[
+    ["Headcount",N_EMP.toString(),`${bench.length} on bench now`],
+    ["Coverage on paper",pct(paperCov,0),`Free FTE vs demand in ${WM[peakM]}`],
+    ["Skill-matched coverage",pct(matchCov,0),`<b class="up-bad">${pct(1-matchCov,0)}</b> of demand has no right-skilled person`],
+    ["Projects at risk",`${crit.length} / ${PROJECTS.length}`,`${inrS(crit.reduce((a,p)=>a+p.val,0)*1e7)} contract value exposed`],
+    ["Bench cost",inrS(benchCost*1e5)+"/mo",`Mostly ${[...new Set(bench.map(e=>e.primary))].map(k=>[k,bench.filter(e=>e.primary===k).length]).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>SKM[x[0]].l).join(", ")}`]
+  ].map(([l,v,s])=>`<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`).join("");
+  const st={Allocated:0,Partial:0,Bench:0};employees.forEach(e=>st[e.status]++);
+  const bj=bench.filter(e=>["java","manualqa","sqlbi"].includes(e.primary)).length;
+  $("#wUtilInsight").innerHTML=`<b>${bench.length} people are idle</b>, yet ${shortSkills.length} skills are short. ${bj} of the bench (${pct(bj/bench.length,0)}) are Java, Manual QA or SQL/BI, the three skills with the biggest surplus.`;
+  // gap heatmap
+  const rows=[...GAP].sort((a,b)=>Math.max(...b.m.map(x=>x.g))-Math.max(...a.m.map(x=>x.g)));
+  let h=`<table><thead><tr><th class="rl">Skill</th>${WM.map(m=>`<th>${m}</th>`).join("")}<th>Peak gap</th></tr></thead><tbody>`;
+  rows.forEach(r=>{const pk=Math.max(...r.m.map(x=>x.g));h+=`<tr><th class="rl">${esc(r.l)}</th>`+r.m.map(x=>{const g=x.g;let bg;if(g>0.25)bg=`color-mix(in oklab,var(--crit) ${Math.round(clamp(g/8,0,1)*72+14)}%,var(--surface))`;else if(g<-0.25)bg=`color-mix(in oklab,var(--good) ${Math.round(clamp(-g/30,0,1)*45+8)}%,var(--surface))`;else bg="var(--surface-2)";return`<td style="background:${bg};color:${g>5?"var(--surface)":"var(--fg)"}" title="Demand ${x.d}, supply ${x.s}">${g>0?"+":""}${g.toFixed(g%1?1:0)}</td>`}).join("")+`<td style="font-weight:600;color:${pk>0.25?"var(--crit)":"var(--good)"}">${pk>0.25?"short "+Math.ceil(pk):"ok"}</td></tr>`});
+  $("#gapHm").innerHTML=h+"</tbody></table>";
+  // gantt
+  let g=`<div class="gantt-in"><div class="gh" style="text-align:left">Project</div>${WM.map(m=>`<div class="gh">${m}</div>`).join("")}`;
+  PROJECTS.forEach(p=>{const e=Math.min(6,p.s+p.dur);g+=`<div class="grow"><button class="gl" data-proj="${p.id}"><b>${p.n} · ${esc(p.d)}</b><span>${esc(p.client)} · ₹${p.val} Cr</span></button><button class="gb" data-proj="${p.id}" aria-pressed="false" style="grid-column:${p.s+2} / ${e+2};--pc:var(${RISKC[p.risk]})">${p.risk} · ${pct(p.coverage,0)}</button></div>`});
+  $("#gantt").innerHTML=g+"</div>";
+  // plan table
+  const tot=PLANS_W;
+  $("#planRows").innerHTML=tot.map(p=>{const parts=[["c1",p.realloc.length,"Reallocate"],["c5",p.upskill.length,"Upskill"],["c2",p.hire,"Hire"],["c3",p.contract,"Contract"]].filter(x=>x[1]>0);return`<tr data-skill="${p.k}" tabindex="0"><td><b>${esc(p.l)}</b></td><td class="n">${p.short} FTE</td><td>${WM[Math.max(p.first,0)]}</td><td style="min-width:150px"><div class="mix">${parts.map(([c,n,t])=>`<i style="width:${n/p.short*100}%;background:var(--${c})" title="${t}: ${n}">${n}</i>`).join("")}</div></td><td class="n ${p.late?"warn":""}">${p.ready} wk${p.late?" ⚠":""}</td><td class="n">${inrS(p.cost*1e5)}</td><td style="font-size:12.5px">${esc(p.rec)}</td></tr>`}).join("");
+  const internal=planTotals.re+planTotals.up;
+  $("#planInsight").innerHTML=`<b>${internal} of ${planTotals.short} short FTE (${pct(internal/planTotals.short,0)}) can come from inside the company</b>, mostly by upskilling bench and soon-free people from surplus skills. The rest needs ${planTotals.hi} hires and ${planTotals.co} contractors. Total one-time cost: ${inrS(planTotals.cost*1e5)}, against ${inrS(benchCost*1e5)} a month already spent on idle bench.`;
+  // inventory selects
+  $("#wSkill").innerHTML=SK.map(s=>`<option value="${s.k}" ${s.k==="k8s"?"selected":""}>${esc(s.l)}</option>`).join("");
+}
+function renderWfCharts(){
+  if(!hasChart)return;
+  const o=baseOpts();const acc=cssv("--accent"),crit=cssv("--crit"),ink2=cssv("--ink2"),good=cssv("--good"),warn=cssv("--warn"),mut=cssv("--c6");
+  const rows=[...SK].sort((a,b)=>(demand(b.k,peakM)-supply(b.k,peakM))-(demand(a.k,peakM)-supply(a.k,peakM)));
+  mk("wSD",{type:"bar",data:{labels:rows.map(s=>s.l),datasets:[
+    {label:"Demand (FTE)",data:rows.map(s=>demand(s.k,peakM)),backgroundColor:rows.map(s=>demand(s.k,peakM)>supply(s.k,peakM)?crit:alpha(crit,.35)),borderRadius:3},
+    {label:"Free supply, L3+ (FTE)",data:rows.map(s=>supply(s.k,peakM)),backgroundColor:alpha(acc,.75),borderRadius:3}]},
+    options:{...o,indexAxis:"y",scales:{x:{...o.scales.y,beginAtZero:true},y:{grid:{display:false},ticks:{color:cssv("--fg"),autoSkip:false},border:{display:false}}}}});
+  const st={Allocated:0,Partial:0,Bench:0};employees.forEach(e=>st[e.status]++);
+  mk("wUtil",{type:"doughnut",data:{labels:["Fully allocated","Partially allocated","Bench"],datasets:[{data:[st.Allocated,st.Partial,st.Bench],backgroundColor:[acc,ink2,warn],borderColor:cssv("--surface"),borderWidth:2}]},
+    options:{...o,cutout:"64%",scales:{},plugins:{...o.plugins,legend:{position:"right",labels:{...o.plugins.legend.labels,color:cssv("--fg")}}}}});
+}
+const wState={proj:"P2"};
+function renderProject(){
+  const p=PROJECTS.find(x=>x.id===wState.proj);
+  document.querySelectorAll(".gb").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.proj===p.id)));
+  const rows=staffingFor(p);
+  $("#projDetail").innerHTML=`<div class="detail">
+   <div class="hd"><div style="min-width:0;flex:1"><div class="eyebrow">${p.id} · ${esc(p.client)} · starts ${WM[p.s]} · ${p.dur} months</div><h3 style="font-size:19px">${p.n}: ${esc(p.d)}</h3><div style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap"><span class="pill" style="--pc:var(${RISKC[p.risk]})">${p.risk}</span><span class="chip">₹${p.val} Cr contract</span><span class="chip">${Object.values(p.need).reduce((a,b)=>a+b,0)} FTE needed</span></div></div>
+   <div style="text-align:right"><div class="eyebrow">Staffable</div><div style="font-family:var(--display);font-size:28px;font-weight:700;color:var(${RISKC[p.risk]})">${pct(p.coverage,0)}</div></div></div>
+   <div class="mlist">${rows.map(r=>`<div class="playcard" style="padding:10px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(SKM[r.k].l)}</b><span class="mono" style="font-size:12px">${r.need} needed · <span class="${r.cov<.999?"up-bad":"up-good"}">${pct(r.cov,0)} covered</span></span></div>
+     <div class="note">${r.free.length?"Free experts: "+r.free.map(e=>`${esc(e.name)} (L${e.lvl}${e.free?", free "+WM[Math.min(e.free,5)]:", now"})`).join(", "):"No free L3+ experts at project start."}${r.cov<.999&&r.plan?` <b>Gap plan:</b> ${esc(r.plan.rec)}.`:""}</div></div>`).join("")}</div>
+   <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn pri" data-ask="Is ${p.n} at risk of missing its deadline, and how do we staff it?">Ask agent for a staffing plan</button></div>
+  </div>`;
+}
+function renderInventory(){
+  const k=$("#wSkill").value,lv=+$("#wLvl").value,av=+$("#wAvail").value;
+  const list=employees.filter(e=>levelOf(e,k)>=lv&&e.free<=av).sort((a,b)=>levelOf(b,k)-levelOf(a,k)||a.free-b.free);
+  $("#invRows").innerHTML=list.slice(0,25).map(e=>`<tr><td class="who"><b>${esc(e.name)}</b><span>${e.id} · ${e.loc}</span></td><td>${e.dept}</td><td class="n">L${levelOf(e,k)}${e.primary===k?"":' <span class="note">secondary</span>'}</td><td>${esc(SKM[e.primary].l)}</td><td><span class="pill" style="--pc:var(${e.status==="Bench"?"--warn":e.status==="Partial"?"--ink2":"--accent"})">${e.status}</span></td><td>${e.free===0?"Now":e.free<=5?WM[e.free]:"After Apr '27"}</td></tr>`).join("")||`<tr><td colspan="6" class="empty">Nobody matches. Try a lower level or wider availability.</td></tr>`;
+  $("#invCount").textContent=`${list.length} people match${list.length>25?" · showing top 25":""}`;
+}
+
+/* =====================================================================
+   AGENT — tools (shared by Claude mode and the built-in engine)
+   ===================================================================== */
+const findSeg=t=>{t=t.toLowerCase();if(/disengag|silent|inactiv|drift|usage drop/.test(t))return"disengaged";if(/price|pricing|discount|switcher|monthly plan|cheap/.test(t))return"price";if(/service|support|ticket|nps|frustrat|complain/.test(t))return"service";if(/payment|card|dunning|involuntary|billing fail/.test(t))return"payment";if(/early|new customer|onboard|tenure|drop-?off/.test(t))return"early";return null};
+const findSkill=t=>{t=" "+t.toLowerCase().replace(/[^a-z0-9/ ]+/g," ")+" ";for(const s of SK){for(const a of s.al){if(t.includes(" "+a+" "))return s.k}}return null};
+const findProj=t=>{const l=t.toLowerCase();return PROJECTS.find(p=>l.includes(p.n.toLowerCase())||new RegExp("\\b"+p.id.toLowerCase()+"\\b").test(l))||null};
+
+const T={
+ churn_overview(){const l=trend[11],f=trend[0];return{customers:N_CUST,avg_90d_churn_prob:+avgP.toFixed(3),arr_total_inr:Math.round(arrTotal),arr_at_risk_inr:Math.round(arrRiskTotal),tiers:{Critical:tierCount("Critical"),High:tierCount("High"),Medium:tierCount("Medium"),Low:tierCount("Low")},
+   trend_first:{month:f.m,spend_lakh:f.spend,churn_pct:f.churn,new:f.newS,churned:f.churned,net_adds:f.net,cac_inr:Math.round(f.cac)},trend_last:{month:l.m,spend_lakh:l.spend,churn_pct:l.churn,new:l.newS,churned:l.churned,net_adds:l.net,cac_inr:Math.round(l.cac)},
+   driver_share_top5:driverShare.slice(0,5).map(d=>({driver:d.l,share:+d.share.toFixed(3)})),segments:SEG_ORDER.map(s=>{const st=segStats(s);return{key:s,name:st.name,customers:st.n,avg_risk:+st.avgP.toFixed(2),arr_at_risk_inr:Math.round(st.arrRisk),lead_play:st.play}}),
+   channels:channelStats.map(c=>({channel:c.ch,avg_risk:+c.avgP.toFixed(3),early_tenure_risk:+c.earlyP.toFixed(3),spend_share:c.spendShare})),cohort_m1_retention:{oldest:cohort[0].m+" "+cohort[0].row[0].toFixed(0)+"%",newest:cohort[6].m+" "+cohort[6].row[0].toFixed(0)+"%"}}},
+ list_at_risk({segment,tier,plan,limit}={}){let cs=customers.filter(c=>(!segment||c.seg===segment)&&(!tier||c.tier===tier)&&(!plan||c.plan===plan)).sort((a,b)=>b.p-a.p);return cs.slice(0,clamp(+limit||10,1,25)).map(c=>({id:c.id,name:c.name,plan:c.plan,risk:+c.p.toFixed(2),tier:c.tier,segment:SEGS[c.seg].name,top_driver:c.top.l,arr_at_risk_inr:Math.round(c.arrRisk),play:c.strat.plays.map(p=>p.t).join(" + ")}))},
+ customer_profile({id}){const c=customers.find(x=>x.id.toLowerCase()===String(id||"").toLowerCase().replace(/^c(\d)/,"c-$1"));if(!c)throw new Error("No customer with id "+id);return{id:c.id,name:c.name,region:c.region,plan:c.plan,monthly_fee_inr:c.fee,contract:c.contract,tenure_months:c.tenure,channel:c.channel,logins_30d:c.logins,login_trend_pct:+c.trend.toFixed(0),feature_adoption:+c.usage.toFixed(2),tickets_90d:c.tickets,nps:c.nps,payment_failures:c.payFail,discount_ended:c.discountEnded,days_since_active:c.lastActive,
+   churn_prob_90d:+c.p.toFixed(3),tier:c.tier,segment:SEGS[c.seg].name,drivers:c.drivers.slice(0,5).map(d=>({driver:d.l,logodds:+d.v.toFixed(2)})),playbook:{plays:c.strat.plays.map(p=>({play:p.t,what:p.h,owner:p.o,cost_inr:Math.round(p.cost)})),channel:c.strat.channel,act:c.strat.when,risk_reduction:+c.strat.lift.toFixed(2),expected_arr_saved_inr:Math.round(c.strat.saved),roi:+c.strat.roi.toFixed(1)}}},
+ segment_profile({segment}){if(!SEGS[segment])throw new Error("Unknown segment. Use one of "+SEG_ORDER.join(", "));const st=segStats(segment);return{name:st.name,description:SEGS[segment].d,customers:st.n,critical:st.critical,avg_risk:+st.avgP.toFixed(2),arr_at_risk_inr:Math.round(st.arrRisk),top_driver:st.topDriver,avg_tenure_months:+st.avgTenure.toFixed(1),avg_login_trend_pct:+st.avgTrend.toFixed(0),avg_feature_adoption:+st.avgUsage.toFixed(2),avg_tickets_90d:+st.avgTickets.toFixed(1),plan_mix:st.plans,channel_mix:st.channels,lead_play:st.play,lead_play_detail:st.topDriverKey?PLAYS[st.topDriverKey].h:"",programme_cost_inr:Math.round(st.cost),expected_arr_saved_inr:Math.round(st.saveable)}},
+ simulate_budget({budget_lakh}){const b=clamp(+budget_lakh||4,.1,100)*1e5;const r=simulate(b);const l=trend[11];return{budget_inr:Math.round(b),spent_inr:Math.round(r.spent),saturation_budget_inr:Math.round(SAT),customers_targeted:r.n,expected_customers_kept:+r.saves.toFixed(0),arr_protected_inr:Math.round(r.rev),roi:+r.roi.toFixed(1),spend_by_segment_inr:Object.fromEntries(Object.entries(r.bySeg).map(([k,v])=>[SEGS[k].name,Math.round(v)])),same_money_on_acquisition_new_customers:+(b/l.cac).toFixed(0),cac_inr:Math.round(l.cac)}},
+ workforce_overview(){const crit=PROJECTS.filter(p=>p.risk!=="On track");return{headcount:N_EMP,bench:bench.length,bench_cost_lakh_per_month:+benchCost.toFixed(1),peak_month:WM[peakM],paper_coverage:+paperCov.toFixed(2),skill_matched_coverage:+matchCov.toFixed(2),
+   short_skills:shortSkills.map(s=>({skill:s.l,short_fte:s.short,from:WM[Math.max(s.first,0)],months_short:s.months})),surplus_skills:GAP.filter(g=>Math.max(...g.m.map(x=>x.g))<-3).map(g=>({skill:g.l,spare_fte_at_peak:-g.m[peakM].g})),
+   projects:PROJECTS.map(p=>({id:p.id,name:p.n,desc:p.d,start:WM[p.s],coverage:+p.coverage.toFixed(2),risk:p.risk,value_cr:p.val})),projects_at_risk:crit.length,plan_totals:{short_fte:planTotals.short,reallocate:planTotals.re,upskill:planTotals.up,hire:planTotals.hi,contract:planTotals.co,one_time_cost_lakh:+planTotals.cost.toFixed(1)}}},
+ skill_gap({skill}){const k=SKM[skill]?skill:findSkill(String(skill||""));if(!k)throw new Error("Unknown skill. Use one of "+SK.map(s=>s.k).join(", "));const g=GAP.find(x=>x.k===k);const holders=employees.filter(e=>levelOf(e,k)>=3);const pl=PLANS_W.find(p=>p.k===k);
+   return{skill:SKM[k].l,by_month:g.m.map((x,i)=>({month:WM[i],demand:x.d,free_supply:x.s,gap:+x.g.toFixed(1)})),total_l3_holders:holders.length,holders_allocated:holders.filter(e=>e.status==="Allocated").length,hire_weeks:SKM[k].hw,annual_ctc_lakh:SKM[k].ctc,upskill_base_weeks:SKM[k].up,
+     projects_needing_it:PROJECTS.filter(p=>p.need[k]).map(p=>`${p.n} (${p.need[k]} FTE from ${WM[p.s]})`),plan:pl?{short_fte:pl.short,reallocate:pl.realloc.map(r=>`${r.e.name} (${r.e.id})`),upskill:pl.upskill.map(u=>`${u.e.name} (${u.e.id}, ${SKM[u.e.primary].l}, ${u.weeks} wk)`),hire:pl.hire,contract:pl.contract,convert_contractors_to_hires:pl.convert,ready_weeks:pl.ready,one_time_cost_lakh:+pl.cost.toFixed(1),late:pl.late}:"no shortage"}},
+ project_status({project}){const p=findProj(String(project||""))||PROJECTS.find(x=>x.id===project);if(!p)throw new Error("Unknown project. Use one of "+PROJECTS.map(x=>x.n).join(", "));return{id:p.id,name:p.n,desc:p.d,client:p.client,start:WM[p.s],months:p.dur,value_cr:p.val,coverage:+p.coverage.toFixed(2),risk:p.risk,
+   skills:staffingFor(p).map(r=>({skill:SKM[r.k].l,need:r.need,coverage:+r.cov.toFixed(2),free_experts:r.free.map(e=>`${e.name} L${e.lvl}`),gap_plan:r.cov<.999&&r.plan?r.plan.rec:null}))}},
+ find_people({skill,min_level,free_by_month}){const k=SKM[skill]?skill:findSkill(String(skill||""));if(!k)throw new Error("Unknown skill");const lv=clamp(+min_level||2,1,4),fm=free_by_month==null?9:+free_by_month;
+   const direct=employees.filter(e=>levelOf(e,k)>=lv&&e.free<=fm).sort((a,b)=>levelOf(b,k)-levelOf(a,k)||a.free-b.free).slice(0,12).map(e=>({id:e.id,name:e.name,level:levelOf(e,k),primary:SKM[e.primary].l,status:e.status,free:e.free===0?"now":WM[Math.min(e.free,5)]||"after horizon"}));
+   const adjacent=employees.filter(e=>e.primary!==k&&adj(e.primary,k)>=.4&&e.free<=Math.max(fm,1)&&surplusKeys.has(e.primary)).slice(0,8).map(e=>({id:e.id,name:e.name,primary:SKM[e.primary].l,adjacency:adj(e.primary,k),est_upskill_weeks:Math.round(SKM[k].up*(1-adj(e.primary,k))+2),status:e.status}));
+   return{skill:SKM[k].l,matches:direct,upskill_candidates_from_surplus_skills:adjacent}}
+};
+
+/* ---------------- built-in engine (local reasoning) ---------------- */
+function local(q,mod){
+  const steps=[];const call=(n,a)=>{steps.push(n+"("+(a?Object.values(a).filter(v=>v!=null&&v!=="").join(", "):"")+")");return T[n](a||{})};
+  const t=q.toLowerCase();
+  if(mod==="churn"){
+    const idm=q.match(/c-?\s?(\d{5})/i);
+    if(idm){const c=call("customer_profile",{id:"C-"+idm[1]});const d=customers.find(x=>x.id===c.id);
+      if(/draft|message|email|whatsapp|outreach|write/.test(t)){
+        const first=d.name.split(" ")[0];const pl=d.strat.plays[0];
+        const offer={price:`we've reserved our loyalty rate for you: the ${d.plan} annual plan with 2 months free, price locked for a year`,contract:`you can switch to annual billing at 15% off`,payment:`your last renewal didn't go through. You can switch to UPI AutoPay in one tap and we've added a 7-day grace period so nothing is interrupted`,support:`a senior specialist now owns your open tickets and will call you within 48 hours`,nps:`I'd like to set up a short call to hear what hasn't worked, and we'll credit one month once it's fixed`,engage:`we've picked a few things based on what you used most, plus what's new since your last visit`,inactive:`we've saved a few picks for you based on what you liked`,adopt:`a 20-minute session with our team can switch on two features most ${d.plan} members rely on`,tenure:`I'd love to make sure your first months are worth it. Here's a quick guide to getting the most out of ${d.plan}`,channel:`here's a 2-minute tour of everything your ${d.plan} plan includes`}[pl.k]||"we'd love to help you get more from your plan";
+        return{steps,text:`#### Outreach draft for ${d.name} (${d.id})\nChannel: **${d.strat.channel}**, send **${d.strat.when}**. Built on the top driver: *${d.top.l}*.\n\n> Hi ${first}, thanks for being with us for ${d.tenure} month${d.tenure>1?"s":""}. ${offer.charAt(0).toUpperCase()+offer.slice(1)}. Reply here or tap the link and we'll take care of the rest.\n\n**Why this works:** it addresses ${d.drivers.filter(x=>x.v>.05).slice(0,2).map(x=>x.l.toLowerCase()).join(" and ")} directly, costs about ${inr(d.strat.cost)}, and is expected to cut churn risk by ~${pct(d.strat.lift,0)} (ARR saved ≈ ${inr(d.strat.saved)}).\n\nSwitch the engine to Claude for a fully rewritten, tone-matched version.`}}
+      const top=c.drivers.filter(x=>x.logodds>0).slice(0,3);
+      return{steps,text:`#### ${c.name} (${c.id}): ${pct(c.churn_prob_90d,0)} churn risk, ${c.tier}\n${c.plan} plan at ${inr(c.monthly_fee_inr)}/mo, ${c.tenure_months} months, ${c.contract.toLowerCase()} billing, acquired via ${c.channel}. Segment: **${c.segment}**.\n\n**Why the model flags them**\n${top.map(x=>`- ${x.driver} (+${x.logodds} log-odds)`).join("\n")}\n- Logins ${c.logins_30d} in 30 days (${c.login_trend_pct>0?"+":""}${c.login_trend_pct}%), adoption ${pct(c.feature_adoption,0)}, ${c.tickets_90d} tickets, NPS ${c.nps}\n\n**What to do (${c.playbook.act}, via ${c.playbook.channel})**\n${c.playbook.plays.map(p=>`1. **${p.play}**: ${p.what}. Owner: ${p.owner}, ${inr(p.cost_inr)}`).join("\n")}\n\nExpected risk cut ~${pct(c.playbook.risk_reduction,0)}, ARR saved ≈ ${inr(c.playbook.expected_arr_saved_inr)}, ROI ${c.playbook.roi}×.`}}
+    const nm=q.match(/(\d+(?:\.\d+)?)\s*(l|lakh|lakhs|lac|cr|crore)?\b/i);
+    if(/budget|allocate|invest|lakh|crore|₹|\binr\b|\brs\b/.test(t)&&nm){let b=+nm[1];if(nm[2]&&/cr/i.test(nm[2]))b*=100;else if(!nm[2]&&b>1000)b=b/1e5;const r=call("simulate_budget",{budget_lakh:b});
+      return{steps,text:`#### Best use of ${inrS(r.budget_inr)} on retention\n- Fund **${r.customers_targeted}** playbooks, highest return per rupee first (spends ${inrS(r.spent_inr)})${r.budget_inr>r.saturation_budget_inr?`\n- Only ${inrS(r.saturation_budget_inr)} is worth spending: beyond that no playbook returns more than it costs`:""}\n- Expected to keep **~${r.expected_customers_kept} customers** and protect **${inrS(r.arr_protected_inr)} ARR**, a **${r.roi}×** return\n- Split: ${Object.entries(r.spend_by_segment_inr).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k} ${inrS(v)}`).join(", ")}\n\n**Compared with acquisition:** the same money buys ~${r.same_money_on_acquisition_new_customers} new customers at today's CAC of ${inr(r.cac_inr)}, and paid-social sign-ups carry the highest churn risk. Move the slider in the optimiser to see where returns flatten.`}}
+    const sg=findSeg(t);
+    if(sg){const s=call("segment_profile",{segment:sg});const list=call("list_at_risk",{segment:sg,limit:5});
+      return{steps,text:`#### ${s.name}: ${s.customers} customers, ${inrS(s.arr_at_risk_inr)} ARR at risk\n${s.description}\n\n**Diagnosis**\n- Main driver: **${s.top_driver}**; ${s.critical} are critical\n- Avg login trend ${s.avg_login_trend_pct}%, feature adoption ${pct(s.avg_feature_adoption,0)}, ${s.avg_tickets_90d} tickets / 90d, tenure ${s.avg_tenure_months} months\n- Plan mix: ${Object.entries(s.plan_mix).map(([k,v])=>`${k} ${v}`).join(", ")}\n\n**Retention strategy**\n1. Lead play: **${s.lead_play}**: ${s.lead_play_detail}\n2. Personalise the second play from each customer's next driver (shown in their playbook)\n3. Programme cost ≈ ${inrS(s.programme_cost_inr)} for ≈ ${inrS(s.expected_arr_saved_inr)} expected ARR saved\n\n**Start with:** ${list.map(c=>`${c.name} (${c.id}, ${pct(c.risk,0)})`).join(", ")}.`}}
+    if(/channel|paid social|acquisition|cac|marketing/.test(t)&&!/why|rising|increas/.test(t)){const o=call("churn_overview");const ch=[...o.channels].sort((a,b)=>b.avg_risk-a.avg_risk);
+      return{steps,text:`#### Acquisition channels vs churn risk\n${ch.map(c=>`- **${c.channel}**: avg risk ${pct(c.avg_risk,0)}, new-customer risk ${pct(c.early_tenure_risk,0)}, ${pct(c.spend_share,0)} of spend`).join("\n")}\n\n**Read-out:** the budget is concentrated in the channel that brings the least loyal customers. Recommend capping paid social, shifting 15-20% to referral incentives, and requiring paid-social sign-ups to go through the expectation-reset onboarding.`}}
+    if(/top|highest|list|who|which customers|at.?risk/.test(t)){const nn=(t.match(/\b(\d{1,2})\b/)||[])[1];const tier=/critical/.test(t)?"Critical":/high/.test(t)&&!/highest/.test(t)?"High":"";const plan=/premium/.test(t)?"Premium":/standard/.test(t)?"Standard":/basic/.test(t)?"Basic":"";const l=call("list_at_risk",{tier,plan,limit:nn||10});
+      return{steps,text:`#### ${l.length} highest-risk customers${tier?" ("+tier+")":""}${plan?" on "+plan:""}\n${l.map((c,i)=>`${i+1}. **${c.name}** (${c.id}, ${c.plan}): ${pct(c.risk,0)}, ${c.top_driver}. Play: ${c.play}`).join("\n")}\n\nTogether: ${inr(l.reduce((a,c)=>a+c.arr_at_risk_inr,0))} ARR at risk. Ask about any ID for the full diagnosis and an outreach draft.`}}
+    const o=call("churn_overview");
+    return{steps,text:`#### Why churn is rising despite more marketing\n1. **Acquisition is buying weaker customers.** Spend went from ₹${o.trend_first.spend_lakh}L to ₹${o.trend_last.spend_lakh}L a month and CAC from ${inr(o.trend_first.cac_inr)} to ${inr(o.trend_last.cac_inr)}. Paid social takes ${pct(o.channels[0].spend_share,0)} of spend with the highest predicted churn (${pct(o.channels[0].avg_risk,0)}).\n2. **Newer cohorts leave sooner.** Month-1 retention dropped from ${o.cohort_m1_retention.oldest} to ${o.cohort_m1_retention.newest}.\n3. **The base is disengaging.** Top drivers of predicted churn: ${o.driver_share_top5.slice(0,3).map(d=>`${d.driver} (${pct(d.share,0)})`).join(", ")}.\n\n**Net effect:** monthly churn ${o.trend_first.churn_pct}% → ${o.trend_last.churn_pct}%, net adds ${o.trend_first.net_adds} → ${o.trend_last.net_adds}. ${inrS(o.arr_at_risk_inr)} ARR is at risk over 90 days.\n\n**Recommendation:** treat this as a retention problem, not a reach problem. Fund the segment playbooks below before adding acquisition budget.\n${o.segments.map(s=>`- ${s.name}: ${s.customers} customers, ${inrS(s.arr_at_risk_inr)} → ${s.lead_play}`).join("\n")}`};
+  }
+  // workforce
+  const pj=findProj(q);
+  if(pj){const p=call("project_status",{project:pj.n});const gaps=p.skills.filter(s=>s.coverage<.999);
+    return{steps,text:`#### ${p.name}: ${p.desc} (${p.risk}, ${pct(p.coverage,0)} staffable)\nStarts ${p.start}, ${p.months} months, ₹${p.value_cr} Cr for ${p.client}.\n\n${gaps.length?`**Short skills at start**\n${gaps.map(s=>`- **${s.skill}**: ${s.need} needed, ${pct(s.coverage,0)} covered${s.gap_plan?`. Plan: ${s.gap_plan}`:""}`).join("\n")}`:"Every required skill can be staffed from free capacity."}\n\n**Covered skills:** ${p.skills.filter(s=>s.coverage>=.999).map(s=>s.skill).join(", ")||"none"}.\n\n**Recommendation:** ${p.risk==="On track"?"lock the named experts now so other projects don't take them.":`confirm the reallocations this week, start upskilling immediately (the clock is the start date in ${p.start}), and open requisitions for the hires the same day. If any gap is still open 4 weeks before start, bring in contractors rather than slip the date.`}`}}
+  const sk=findSkill(q);
+  if(sk&&/who|candidate|upskill|train|people|find|internal|redeploy|realloc/.test(t)){const f=call("find_people",{skill:sk,min_level:3,free_by_month:2});const g=call("skill_gap",{skill:sk});
+    return{steps,text:`#### Who can cover ${f.skill}\n**Experts (L3+) free by ${WM[2]}:** ${f.matches.length?f.matches.slice(0,6).map(m=>`${m.name} (L${m.level}, ${m.primary}, ${m.free})`).join("; "):"none"}.\n\n**Upskill candidates from surplus teams:**\n${f.upskill_candidates_from_surplus_skills.length?f.upskill_candidates_from_surplus_skills.slice(0,6).map(m=>`- ${m.name} (${m.id}): ${m.primary}, adjacency ${m.adjacency}, ~${m.est_upskill_weeks} weeks, ${m.status}`).join("\n"):"- none with strong enough adjacency"}\n\nHiring a ${f.skill} expert takes ~${g.hire_weeks} weeks at ~₹${g.annual_ctc_lakh} L CTC, so upskilling is ${g.upskill_base_weeks<g.hire_weeks?"faster":"slower"} for people with adjacent skills.`}}
+  if(sk){const g=call("skill_gap",{skill:sk});const pl=g.plan;
+    return{steps,text:`#### ${g.skill}: supply vs demand\n${g.by_month.map(m=>`- ${m.month}: demand ${m.demand}, free ${m.free_supply} → ${m.gap>0?"**short "+m.gap+"**":"ok"}`).join("\n")}\n\n${g.total_l3_holders} people hold it at L3+, ${g.holders_allocated} of them locked on current work. Needed by: ${g.projects_needing_it.join(", ")||"no pipeline project"}.\n\n${typeof pl==="string"?"**No shortage.** Keep surplus people visible to other teams.":`**Plan to close ${pl.short_fte} FTE (ready in ~${pl.ready_weeks} weeks${pl.late?", later than needed":""})**\n${pl.reallocate.length?`- Reallocate: ${pl.reallocate.join(", ")}\n`:""}${pl.upskill.length?`- Upskill: ${pl.upskill.join("; ")}\n`:""}${pl.hire?`- Hire ${pl.hire} (≈${g.hire_weeks} weeks)\n`:""}${pl.contract?`- Contract ${pl.contract}${pl.convert_contractors_to_hires?", then convert to permanent hires since the gap lasts 3+ months":""}\n`:""}- One-time cost ≈ ₹${pl.one_time_cost_lakh} L`}`}}
+  if(/hire|train|cheap|cost|plan|budget|close|fix/.test(t)&&!/why/.test(t)){const o=call("workforce_overview");const pt=o.plan_totals;
+    return{steps,text:`#### Gap closure plan: ${pt.short_fte} FTE short across ${o.short_skills.length} skills\n- **Reallocate** ${pt.reallocate} people who already hold the skill as a secondary\n- **Upskill** ${pt.upskill} from surplus teams (fastest and cheapest where adjacency is strong)\n- **Hire** ${pt.hire} where hiring finishes before the need date\n- **Contract** ${pt.contract} where neither is fast enough\n\nOne-time cost ≈ **₹${pt.one_time_cost_lakh} L**, against ₹${o.bench_cost_lakh_per_month} L a month already paid for idle bench. Internal moves cover ${pct((pt.reallocate+pt.upskill)/pt.short_fte,0)} of the gap.\n\n**Hardest gaps:** ${o.short_skills.slice(0,3).map(s=>`${s.skill} (${s.short_fte} FTE from ${s.from})`).join(", ")}. Ask about any skill for named people.`}}
+  const o=call("workforce_overview");const pr=o.projects.filter(p=>p.risk!=="On track");
+  return{steps,text:`#### Why deadlines slip with ${o.bench} people on the bench\n1. **Headcount is fine, skills are not.** Free capacity covers ${pct(o.paper_coverage,0)} of ${o.peak_month} demand on paper, but only **${pct(o.skill_matched_coverage,0)}** is covered by people with the right skill.\n2. **The surplus is in the wrong places:** ${o.surplus_skills.slice(0,3).map(s=>`${s.skill} (+${s.spare_fte_at_peak})`).join(", ")}.\n3. **The shortages are in scarce, slow-to-hire skills:** ${o.short_skills.slice(0,4).map(s=>`${s.skill} (−${s.short_fte} from ${s.from})`).join(", ")}.\n4. **Timing:** experts are locked on current work until after new projects start.\n\n**Exposed:** ${pr.map(p=>`${p.name} (${pct(p.coverage,0)})`).join(", ")}.\n\n**Recommendation:** run a weekly skills-supply review, start upskilling surplus Java, QA and SQL people into adjacent skills now, and only hire for gaps that internal moves can't close in time. Ask "show the closure plan" for the full mix.`};
+}
+
+/* ---------------- Claude engine ---------------- */
+let sample=null,useClaude=false,claudeOK=false;
+const TOOLDEFS={
+ churn:[
+  {name:"churn_overview",description:"Company-level churn KPIs, 12-month trend endpoints, top drivers, segment summaries, acquisition channels, cohort retention. Call first for broad questions."},
+  {name:"list_at_risk",description:"Highest-risk customers, optionally filtered. Returns id, plan, risk, segment, top driver, ARR at risk, play.",inputSchema:{type:"object",properties:{segment:{type:"string",enum:SEG_ORDER},tier:{type:"string",enum:["Critical","High","Medium","Low"]},plan:{type:"string",enum:["Basic","Standard","Premium"]},limit:{type:"number"}}}},
+  {name:"customer_profile",description:"Full profile of one customer: behaviour, churn probability, driver attribution, and the personalised playbook.",inputSchema:{type:"object",properties:{id:{type:"string",description:"e.g. C-10042"}},required:["id"]}},
+  {name:"segment_profile",description:"Behavioural profile and lead retention play for one at-risk segment.",inputSchema:{type:"object",properties:{segment:{type:"string",enum:SEG_ORDER}},required:["segment"]}},
+  {name:"simulate_budget",description:"Optimise a retention budget across customers by return per rupee; compares with spending it on acquisition.",inputSchema:{type:"object",properties:{budget_lakh:{type:"number",description:"Budget in ₹ lakh"}},required:["budget_lakh"]}}
+ ],
+ workforce:[
+  {name:"workforce_overview",description:"Headcount, bench, paper vs skill-matched coverage, short and surplus skills, project risk, gap plan totals. Call first for broad questions."},
+  {name:"skill_gap",description:"Month-by-month demand vs free supply for one skill, plus the named closure plan.",inputSchema:{type:"object",properties:{skill:{type:"string",enum:SK.map(s=>s.k)}},required:["skill"]}},
+  {name:"project_status",description:"Staffing coverage and gaps for one project, with free experts and gap plans per skill.",inputSchema:{type:"object",properties:{project:{type:"string",description:"Project name, e.g. Helix"}},required:["project"]}},
+  {name:"find_people",description:"Employees holding a skill at a minimum level and free by a month index (0=Nov '26 … 5=Apr '27), plus upskill candidates from surplus teams.",inputSchema:{type:"object",properties:{skill:{type:"string",enum:SK.map(s=>s.k)},min_level:{type:"number"},free_by_month:{type:"number"}},required:["skill"]}}
+ ]};
+function rules(mod){
+  const base=`You are Pulse Agent, an AI analyst inside a company dashboard. All data is assumed/synthetic for a case study, generated by the dashboard. Answer as a sharp data analyst advising management: lead with the answer, then evidence, then recommended actions. Use the tools to get numbers; never invent customers, employees, or figures. Use Indian currency formatting (₹, lakh, crore). Keep answers under ~220 words unless asked for more. Format with short markdown: '####' headings, bullets, numbered steps, **bold** for key numbers. No tables wider than 4 columns.`;
+  if(mod==="churn")return base+`\n\nMODULE: Customer churn & retention for a subscription business (Basic ₹499, Standard ₹999, Premium ₹1,799 per month). A logistic model scores 90-day churn probability from 10 behavioural drivers; driver attribution is in log-odds. At-risk (≥30%) customers are segmented by strongest driver into: disengaged (Silent Disengagers), price (Price-Sensitive Switchers), service (Service-Frustrated), payment (Payment-Friction), early (Early-Life Drop-offs). Problem: churn rising despite higher marketing spend. When asked to draft outreach, call customer_profile and write a short, warm message in the customer's channel, addressing their top drivers with the playbook offer.`;
+  return base+`\n\nMODULE: Workforce capacity & skill gaps for a 420-person IT services company. Six-month horizon Nov '26 to Apr '27. Supply = employees whose primary skill matches at L3+ and who are free by that month. Demand = pipeline projects. Closure options in order: reallocate (secondary skill at L3), upskill (adjacent skills from surplus teams), hire (if hiring time fits), contract. Problem: enough employees on paper, but deadlines missed because skills aren't available at the right time.`;
+}
+async function askClaude(q,mod,hist,onStep,onText,signal){
+  const turns=[{role:"user",content:rules(mod)},...hist.slice(-8),{role:"user",content:q}];
+  const tools=TOOLDEFS[mod].map(d=>({...d,execute:(input)=>{onStep(d.name+"("+Object.values(input||{}).join(", ")+")");return T[d.name](input||{})}}));
+  const r=await sample(turns,{tools,signal,modelTier:"quick",onText:({text})=>onText(text)});
+  return r.text;
+}
+
+/* ---------------- chat UI ---------------- */
+let mod="churn";const hist={churn:[],workforce:[]};let busy=false,ctl=null;
+function md(s){
+  const lines=String(s).replace(/\r/g,"").split("\n");let out="",list=null,tbl=[];
+  const inline=x=>esc(x).replace(/\*\*(.+?)\*\*/g,"<b>$1</b>").replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<i>$2</i>").replace(/`([^`]+)`/g,"<code>$1</code>");
+  const close=()=>{if(list){out+=`</${list}>`;list=null}};
+  const flushT=()=>{if(!tbl.length)return;const rows=tbl.filter(r=>!/^\s*\|?\s*:?-{2,}/.test(r)).map(r=>r.trim().replace(/^\||\|$/g,"").split("|"));out+="<table>"+rows.map((r,i)=>"<tr>"+r.map(c=>i?`<td>${inline(c.trim())}</td>`:`<th>${inline(c.trim())}</th>`).join("")+"</tr>").join("")+"</table>";tbl=[]};
+  for(const l of lines){
+    if(/^\s*\|.*\|\s*$/.test(l)){close();tbl.push(l);continue}else flushT();
+    let m;
+    if(m=l.match(/^#{1,6}\s+(.*)/)){close();out+=`<h4>${inline(m[1])}</h4>`}
+    else if(m=l.match(/^\s*[-*•]\s+(.*)/)){if(list!=="ul"){close();out+="<ul>";list="ul"}out+=`<li>${inline(m[1])}</li>`}
+    else if(m=l.match(/^\s*\d+[.)]\s+(.*)/)){if(list!=="ol"){close();out+="<ol>";list="ol"}out+=`<li>${inline(m[1])}</li>`}
+    else if(m=l.match(/^>\s?(.*)/)){close();out+=`<p style="border-left:3px solid var(--accent);padding-left:9px">${inline(m[1])}</p>`}
+    else if(l.trim()===""){close()}
+    else{close();out+=`<p>${inline(l)}</p>`}
+  }
+  close();flushT();return out;
+}
+function addMsg(role,html){const d=document.createElement("div");d.className="msg "+role;if(role==="u")d.textContent=html;else d.innerHTML=`<div class="trace"></div><div class="body">${html}</div>`;$("#msgs").appendChild(d);$("#msgs").scrollTop=$("#msgs").scrollHeight;return d}
+function engineLabel(){$("#engineBtn").innerHTML=useClaude?`engine: <b>Claude · live</b>`:`engine: <b>built-in</b>`;$("#engineBtn").title=claudeOK?"Switch between Claude and the built-in analytics engine":"Claude isn't available in this view; using the built-in engine";}
+const SUGG={
+ churn:()=>["Why is churn rising despite higher marketing spend?","Show the 10 highest-risk customers","What's driving the Price-Sensitive segment?","Best use of a ₹5 lakh retention budget",`Build a playbook for ${[...customers].sort((a,b)=>b.p-a.p)[0].id}`],
+ workforce:()=>["Why are we missing deadlines with people on the bench?","How do we close the Kubernetes gap?","Is Helix at risk of missing its deadline?","Who can we upskill into Gen AI?","Hire vs train: what's the cheapest closure plan?"]
+};
+function renderSugg(){$("#sugg").innerHTML=SUGG[mod]().map(s=>`<button type="button">${esc(s)}</button>`).join("");$("#agentCtx").textContent=mod==="churn"?`Context: Churn & Retention · ${N_CUST.toLocaleString("en-IN")} customers scored`:`Context: Workforce & Skills · ${N_EMP} employees, ${PROJECTS.length} projects`}
+function greet(){
+  $("#msgs").innerHTML="";
+  const g=mod==="churn"?`#### Retention agent ready\nI've scored **${N_CUST.toLocaleString("en-IN")} subscribers**. **${tierCount("Critical")}** are critical and **${inrS(arrRiskTotal)} ARR** is at risk over the next 90 days. The biggest driver is *${driverShare[0].l.toLowerCase()}*.\n\nAsk me why churn is rising, about a segment or a customer ID, or how to spend a retention budget.`:`#### Workforce agent ready\nYou have **${N_EMP} people** and **${bench.length} on the bench**, yet only **${pct(matchCov,0)}** of peak demand is covered by the right skills. **${PROJECTS.filter(p=>p.risk!=="On track").length} of ${PROJECTS.length}** projects are at risk.\n\nAsk me about a skill, a project, who to upskill, or the hire-vs-train plan.`;
+  addMsg("a",md(g));
+  hist[mod].forEach(h=>{if(h.role==="user")addMsg("u",h.content);else addMsg("a",md(h.content))});
+}
+async function send(q){
+  q=q.trim();if(!q||busy)return;
+  busy=true;$("#sendBtn").textContent="Stop";$("#q").value="";
+  addMsg("u",q);const m=addMsg("a",`<span class="thinking">Analysing…</span>`);const tr=m.querySelector(".trace"),body=m.querySelector(".body");
+  const step=s=>{const sp=document.createElement("span");sp.textContent=s;tr.appendChild(sp)};
+  const thisMod=mod;let text="";
+  try{
+    if(useClaude&&sample){
+      ctl=new AbortController();
+      text=await askClaude(q,thisMod,hist[thisMod],step,t=>{body.innerHTML=md(t);$("#msgs").scrollTop=$("#msgs").scrollHeight},ctl.signal);
+      body.innerHTML=md(text);
+    }else{
+      await new Promise(r=>setTimeout(r,350));
+      const r=local(q,thisMod);r.steps.forEach(step);text=r.text;body.innerHTML=md(text);
+    }
+    hist[thisMod].push({role:"user",content:q},{role:"assistant",content:text});
+  }catch(e){
+    const code=e&&e.code;
+    if(code==="cancelled"){body.innerHTML=e.text?md(e.text):`<span class="thinking">Stopped.</span>`}
+    else if(["not_granted","sampling_disabled","not_declared","capability_disabled","capability_removed","tools_unavailable"].includes(code)){
+      claudeOK=false;useClaude=false;engineLabel();const r=local(q,thisMod);r.steps.forEach(step);
+      body.innerHTML=`<p class="note">Claude isn't available here, so the built-in engine answered.</p>`+md(r.text);hist[thisMod].push({role:"user",content:q},{role:"assistant",content:r.text});
+    }else if(code==="rate_limited"){body.innerHTML=`<p>Claude is rate-limited right now. Try again in a minute, or switch to the built-in engine.</p>`}
+    else if(code){body.innerHTML=(e.text?md(e.text):"")+`<p class="note">The answer was interrupted (${esc(code)}). Send again to retry.</p>`}
+    else{body.innerHTML=`<p>Something went wrong: ${esc(e&&e.message||e)}</p>`}
+  }finally{busy=false;ctl=null;$("#sendBtn").textContent="Send";$("#msgs").scrollTop=$("#msgs").scrollHeight}
+}
+
+/* ---------------- module switching & events ---------------- */
+let built={churn:false,workforce:false};
+function show(m){
+  mod=m;
+  document.querySelectorAll(".tab").forEach(t=>t.setAttribute("aria-selected",String(t.dataset.mod===m)));
+  $("#mod-churn").hidden=m!=="churn";$("#mod-workforce").hidden=m!=="workforce";
+  requestAnimationFrame(()=>{if(m==="churn"){renderChurnCharts()}else{renderWfCharts()}built[m]=true});
+  renderSugg();greet();
+  try{history.replaceState(null,"","#"+m)}catch(_){}
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.mod)));
+document.addEventListener("click",e=>{
+  const go=e.target.closest("[data-go]");if(go){scrollToId(go.dataset.go);return}
+  const ask=e.target.closest("[data-ask]");if(ask){send(ask.dataset.ask);if(innerWidth<=1180)scrollToId("agent");return}
+  const seg=e.target.closest(".seg");if(seg){cState.seg=cState.seg===seg.dataset.seg?"":seg.dataset.seg;$("#cSeg").value=cState.seg;cState.shown=15;renderTable();return}
+  const row=e.target.closest("#cRows tr[data-id]");if(row){cState.sel=row.dataset.id;renderTable();renderDetail();return}
+  const pj=e.target.closest("[data-proj]");if(pj){wState.proj=pj.dataset.proj;renderProject();return}
+  const pr=e.target.closest("#planRows tr[data-skill]");if(pr){$("#wSkill").value=pr.dataset.skill;$("#wLvl").value="2";renderInventory();return}
+  const sg=e.target.closest("#sugg button");if(sg){send(sg.textContent);return}
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"){const r=e.target.closest&&e.target.closest("#cRows tr[data-id]");if(r){cState.sel=r.dataset.id;renderTable();renderDetail()}}});
+$("#cSearch").addEventListener("input",e=>{cState.q=e.target.value;cState.shown=15;renderTable()});
+$("#cSeg").addEventListener("change",e=>{cState.seg=e.target.value;cState.shown=15;renderTable()});
+$("#cTier").addEventListener("change",e=>{cState.tier=e.target.value;cState.shown=15;renderTable()});
+$("#cPlan").addEventListener("change",e=>{cState.plan=e.target.value;cState.shown=15;renderTable()});
+$("#cMore").addEventListener("click",()=>{cState.shown+=15;renderTable()});
+$("#budget").addEventListener("input",()=>{renderSim();if(charts.cFrontier)charts.cFrontier.update("none")});
+["#wSkill","#wLvl","#wAvail"].forEach(s=>$(s).addEventListener("change",renderInventory));
+$("#composer").addEventListener("submit",e=>{e.preventDefault();if(busy&&ctl){ctl.abort();return}send($("#q").value)});
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();$("#composer").requestSubmit()}});
+$("#engineBtn").addEventListener("click",()=>{if(!claudeOK){useClaude=false;engineLabel();addMsg("a",md("Claude isn't available in this view, so I'm using the built-in analytics engine. It runs the same tools on the same data."));return}useClaude=!useClaude;engineLabel()});
+$("#fab").addEventListener("click",()=>scrollToId("agent"));
+
+// theme changes → redraw charts
+const redraw=()=>{if(mod==="churn")renderChurnCharts();else renderWfCharts()};
+try{matchMedia("(prefers-color-scheme: dark)").addEventListener("change",redraw)}catch(_){}
+new MutationObserver(redraw).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+// init
+renderChurnStatic();renderWfStatic();
+cState.sel=[...customers].sort((a,b)=>b.p-a.p)[0].id;
+renderTable();renderDetail();renderSim();renderProject();renderInventory();
+engineLabel();
+const start=(location.hash||"").replace("#","");
+show(start==="workforce"?"workforce":"churn");
+
+// connect Claude if the viewer offers it
+(async()=>{try{if(!window.claude||!window.claude.use)return;const s=await window.claude.use("sample");if(!s)return;const lim=await s.limits().catch(()=>null);if(!lim||!lim.tools)return;sample=s;claudeOK=true;useClaude=true;engineLabel()}catch(_){}})();
+})();
+</script>
+
+</body></html>
